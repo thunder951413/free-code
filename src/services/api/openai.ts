@@ -27,8 +27,6 @@ import type {
 } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
 import type { Stream } from '@anthropic-ai/sdk/streaming.mjs'
 import { randomUUID } from 'crypto'
-import { appendFileSync } from 'fs'
-import { join } from 'path'
 import OpenAI from 'openai'
 import type {
   ChatCompletionChunk,
@@ -36,10 +34,9 @@ import type {
   ChatCompletionTool,
 } from 'openai/resources/chat/completions'
 import type { Stream as OpenAIStream } from 'openai/streaming'
-import { getOriginalCwd } from '../../bootstrap/state.js'
 import { logForDebugging } from '../../utils/debug'
-import { writeToStderr } from '../../utils/process'
 import { getInitialSettings } from '../../utils/settings/settings'
+import { appendVisibleLog } from '../../utils/visibleLog.js'
 import {
   getOpenAIModel,
   getOpenAISmallFastModel,
@@ -62,13 +59,7 @@ function getChatCompletionsUrl(baseURL: string): string {
 }
 
 function emitVisibleOpenAILog(message: string): void {
-  writeToStderr(`${message}\n`)
-  try {
-    const logPath = join(getOriginalCwd(), 'log.txt')
-    appendFileSync(logPath, `${new Date().toISOString()} ${message}\n`)
-  } catch {
-    // Logging should never break API calls.
-  }
+  appendVisibleLog(message)
 }
 
 function describeOpenAIError(error: unknown): string {
@@ -98,6 +89,24 @@ function describeOpenAIError(error: unknown): string {
   }
 
   return details.join(', ')
+}
+
+function describeToolChoice(
+  toolChoice:
+    | OpenAI.ChatCompletionCreateParamsStreaming['tool_choice']
+    | OpenAI.ChatCompletionCreateParamsNonStreaming['tool_choice']
+    | undefined,
+): string {
+  if (!toolChoice) {
+    return 'default'
+  }
+  if (typeof toolChoice === 'string') {
+    return toolChoice
+  }
+  if (toolChoice.type === 'function') {
+    return `function:${toolChoice.function.name}`
+  }
+  return toolChoice.type
 }
 
 function getOpenAIClientConfig() {
@@ -508,6 +517,9 @@ function convertChunkToEvents(
 
       // Tool call start (has a name)
       if (tc.function?.name) {
+        emitVisibleOpenAILog(
+          `[OpenAI] tool call start: model=${model} index=${tcIndex} id=${tc.id ?? 'generated'} name=${tc.function.name} args_chars=${tc.function.arguments?.length ?? 0}`,
+        )
         // Close any open text block first
         if (hasOpenTextBlock && currentTextBlockIndex !== null) {
           events.push({
@@ -551,8 +563,14 @@ function convertChunkToEvents(
       else if (tc.function?.arguments) {
         const blockIdx = toolCallIndexMap.get(tcIndex)
         if (blockIdx === undefined) {
+          emitVisibleOpenAILog(
+            `[OpenAI] tool call continuation dropped: model=${model} index=${tcIndex} reason=missing_block_index args_chars=${tc.function.arguments.length}`,
+          )
           continue
         }
+        emitVisibleOpenAILog(
+          `[OpenAI] tool call delta: model=${model} index=${tcIndex} block_index=${blockIdx} args_chars=${tc.function.arguments.length}`,
+        )
         events.push({
           type: 'content_block_delta',
           index: blockIdx,
@@ -646,7 +664,7 @@ export async function* streamWithOpenAI(
 
   logForDebugging(`[OpenAI] Streaming request: model=${model}, messages=${messages.length}, tools=${tools?.length ?? 0}`)
   emitVisibleOpenAILog(
-    `[OpenAI] streaming request: model=${model} endpoint=${getChatCompletionsUrl(baseURL)} messages=${messages.length} tools=${tools?.length ?? 0} max_tokens=${params.max_tokens ?? 'default'}`,
+    `[OpenAI] streaming request: model=${model} endpoint=${getChatCompletionsUrl(baseURL)} messages=${messages.length} tools=${tools?.length ?? 0} tool_choice=${describeToolChoice(toolChoice)} max_tokens=${params.max_tokens ?? 'default'}`,
   )
 
   resetStreamState()
@@ -657,6 +675,12 @@ export async function* streamWithOpenAI(
     })
 
     for await (const chunk of stream) {
+      const choice = chunk.choices?.[0]
+      if (choice?.finish_reason || choice?.delta?.tool_calls?.length) {
+        emitVisibleOpenAILog(
+          `[OpenAI] streaming chunk: model=${model} finish_reason=${choice?.finish_reason ?? 'none'} tool_calls=${choice?.delta?.tool_calls?.length ?? 0}`,
+        )
+      }
       const events = convertChunkToEvents(chunk, model)
       for (const event of events) {
         yield event
@@ -699,7 +723,7 @@ export async function createWithOpenAI(
 
   logForDebugging(`[OpenAI] Non-streaming request: model=${model}, messages=${messages.length}`)
   emitVisibleOpenAILog(
-    `[OpenAI] non-streaming request: model=${model} endpoint=${getChatCompletionsUrl(baseURL)} messages=${messages.length} tools=${tools?.length ?? 0} max_tokens=${params.max_tokens ?? 'default'}`,
+    `[OpenAI] non-streaming request: model=${model} endpoint=${getChatCompletionsUrl(baseURL)} messages=${messages.length} tools=${tools?.length ?? 0} tool_choice=${describeToolChoice(toolChoice)} max_tokens=${params.max_tokens ?? 'default'}`,
   )
 
   let response: OpenAI.ChatCompletion
@@ -716,6 +740,9 @@ export async function createWithOpenAI(
 
   const choice = response.choices[0]
   if (!choice) throw new Error('No response from OpenAI')
+  emitVisibleOpenAILog(
+    `[OpenAI] non-streaming response: model=${model} finish_reason=${choice.finish_reason ?? 'none'} tool_calls=${choice.message.tool_calls?.length ?? 0} text=${choice.message.content ? 'yes' : 'no'}`,
+  )
 
   // Convert OpenAI response to Anthropic BetaMessage
   const content: BetaContentBlock[] = []

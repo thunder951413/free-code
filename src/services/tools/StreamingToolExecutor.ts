@@ -9,6 +9,7 @@ import { findToolByName, type Tools, type ToolUseContext } from '../../Tool.js'
 import { BASH_TOOL_NAME } from '../../tools/BashTool/toolName.js'
 import type { AssistantMessage, Message } from '../../types/message.js'
 import { createChildAbortController } from '../../utils/abortController.js'
+import { appendVisibleLog } from '../../utils/visibleLog.js'
 import { runToolUse } from './toolExecution.js'
 
 type MessageUpdate = {
@@ -74,8 +75,14 @@ export class StreamingToolExecutor {
    * Add a tool to the execution queue. Will start executing immediately if conditions allow.
    */
   addTool(block: ToolUseBlock, assistantMessage: AssistantMessage): void {
+    appendVisibleLog(
+      `[ToolExecutor] queue tool: id=${block.id} name=${block.name}`,
+    )
     const toolDefinition = findToolByName(this.toolDefinitions, block.name)
     if (!toolDefinition) {
+      appendVisibleLog(
+        `[ToolExecutor] missing tool definition: id=${block.id} name=${block.name}`,
+      )
       this.tools.push({
         id: block.id,
         block,
@@ -111,6 +118,9 @@ export class StreamingToolExecutor {
           }
         })()
       : false
+    appendVisibleLog(
+      `[ToolExecutor] queued tool: id=${block.id} name=${block.name} parsed_input=${parsedInput.success ? 'yes' : 'no'} concurrency_safe=${isConcurrencySafe ? 'yes' : 'no'}`,
+    )
     this.tools.push({
       id: block.id,
       block,
@@ -263,6 +273,9 @@ export class StreamingToolExecutor {
    * Execute a tool and collect its results
    */
   private async executeTool(tool: TrackedTool): Promise<void> {
+    appendVisibleLog(
+      `[ToolExecutor] start tool: id=${tool.id} name=${tool.block.name}`,
+    )
     tool.status = 'executing'
     this.toolUseContext.setInProgressToolUseIDs(prev =>
       new Set(prev).add(tool.id),
@@ -277,6 +290,9 @@ export class StreamingToolExecutor {
       // If already aborted (by error or user), generate synthetic error block instead of running the tool
       const initialAbortReason = this.getAbortReason(tool)
       if (initialAbortReason) {
+        appendVisibleLog(
+          `[ToolExecutor] skip tool: id=${tool.id} name=${tool.block.name} reason=${initialAbortReason}`,
+        )
         messages.push(
           this.createSyntheticErrorMessage(
             tool.id,
@@ -334,6 +350,9 @@ export class StreamingToolExecutor {
         // Only add the synthetic error if THIS tool didn't produce the error.
         const abortReason = this.getAbortReason(tool)
         if (abortReason && !thisToolErrored) {
+          appendVisibleLog(
+            `[ToolExecutor] abort tool during stream: id=${tool.id} name=${tool.block.name} reason=${abortReason}`,
+          )
           messages.push(
             this.createSyntheticErrorMessage(
               tool.id,
@@ -352,6 +371,9 @@ export class StreamingToolExecutor {
           )
 
         if (isErrorResult) {
+          appendVisibleLog(
+            `[ToolExecutor] tool error result: id=${tool.id} name=${tool.block.name}`,
+          )
           thisToolErrored = true
           // Only Bash errors cancel siblings. Bash commands often have implicit
           // dependency chains (e.g. mkdir fails → subsequent commands pointless).
@@ -383,6 +405,9 @@ export class StreamingToolExecutor {
       tool.results = messages
       tool.contextModifiers = contextModifiers
       tool.status = 'completed'
+      appendVisibleLog(
+        `[ToolExecutor] finish tool: id=${tool.id} name=${tool.block.name} messages=${messages.length} context_modifiers=${contextModifiers.length} errored=${thisToolErrored ? 'yes' : 'no'}`,
+      )
       this.updateInterruptibleState()
 
       // NOTE: we currently don't support context modifiers for concurrent

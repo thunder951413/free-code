@@ -81,6 +81,7 @@ import {
   getRuntimeMainLoopModel,
   renderModelName,
 } from './utils/model/model.js'
+import { getAPIProvider } from './utils/model/providers.js'
 import {
   doesMostRecentAssistantMessageExceed200k,
   finalContextTokensFromLastResponse,
@@ -110,6 +111,8 @@ import {
 } from './bootstrap/state.js'
 import { createBudgetTracker, checkTokenBudget } from './query/tokenBudget.js'
 import { count } from './utils/array.js'
+import { isHumanTurn } from './utils/messagePredicates.js'
+import { appendVisibleLog } from './utils/visibleLog.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const snipModule = feature('HISTORY_SNIP')
@@ -214,6 +217,76 @@ type State = {
   // Why the previous iteration continued. Undefined on first iteration.
   // Lets tests assert recovery paths fired without inspecting message contents.
   transition: Continue | undefined
+}
+
+const EXECUTION_ACTION_RE =
+  /(?:^[/!]|根据|检查|查看|分析|审查|修复|修改|更新|生成|提交|推送|运行|执行|搜索|打开|读取|创建|删除|安装|部署|发布|重构|排查|诊断|定位|复现|验证|\b(?:check|inspect|analy[sz]e|review|fix|update|modify|edit|generate|commit|push|run|execute|search|open|read|create|delete|install|deploy|publish|refactor|debug|diagnose|reproduce|verify)\b)/i
+
+const EXECUTION_TARGET_RE =
+  /(?:git|github|repo|repository|pull request|\bpr\b|branch|commit|push|file|files|code|command|terminal|test|build|lint|仓库|代码|文件|目录|命令|终端|提交|分支|测试|构建)/i
+
+function extractTextContent(
+  content: Message['message']['content'] | AssistantMessage['message']['content'],
+): string {
+  if (typeof content === 'string') {
+    return content
+  }
+
+  return content
+    .flatMap(block =>
+      block.type === 'text' && typeof block.text === 'string' ? [block.text] : [],
+    )
+    .join('\n')
+}
+
+function getLastHumanTurnText(messages: Message[]): string {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i]
+    if (!message || !isHumanTurn(message)) {
+      continue
+    }
+
+    const text = extractTextContent(message.message.content).trim()
+    if (text.length > 0) {
+      return text
+    }
+  }
+
+  return ''
+}
+
+function shouldRetryExecutionTurnWithoutToolUse(
+  messages: Message[],
+  assistantMessages: AssistantMessage[],
+  toolCount: number,
+  previousTransition: Continue | undefined,
+): boolean {
+  if (getAPIProvider() !== 'openai') {
+    return false
+  }
+
+  if (toolCount === 0) {
+    return false
+  }
+
+  if (previousTransition?.reason === 'execution_turn_tool_retry') {
+    return false
+  }
+
+  const lastAssistantMessage = assistantMessages.at(-1)
+  if (!lastAssistantMessage || lastAssistantMessage.isApiErrorMessage) {
+    return false
+  }
+
+  const lastUserText = getLastHumanTurnText(messages)
+  if (!lastUserText) {
+    return false
+  }
+
+  return (
+    EXECUTION_ACTION_RE.test(lastUserText) &&
+    EXECUTION_TARGET_RE.test(lastUserText)
+  )
 }
 
 export async function* query(
@@ -655,6 +728,16 @@ async function* queryLoop(
         attemptWithFallback = false
         try {
           let streamingFallbackOccured = false
+          const forceToolChoice =
+            state.transition?.reason === 'execution_turn_tool_retry' &&
+            toolUseContext.options.tools.length > 0
+              ? ({ type: 'any' } as const)
+              : undefined
+          if (forceToolChoice) {
+            appendVisibleLog(
+              '[Query] forcing tool choice: type=any because previous execution turn ended without tool_use',
+            )
+          }
           queryCheckpoint('query_api_streaming_start')
           for await (const message of deps.callModel({
             messages: prependUserContext(messagesForQuery, userContext),
@@ -671,7 +754,7 @@ async function* queryLoop(
               ...(config.gates.fastModeEnabled && {
                 fastMode: appState.fastMode,
               }),
-              toolChoice: undefined,
+              toolChoice: forceToolChoice,
               isNonInteractiveSession:
                 toolUseContext.options.isNonInteractiveSession,
               fallbackModel,
@@ -830,6 +913,9 @@ async function* queryLoop(
                 content => content.type === 'tool_use',
               ) as ToolUseBlock[]
               if (msgToolUseBlocks.length > 0) {
+                appendVisibleLog(
+                  `[Query] assistant tool_use blocks: count=${msgToolUseBlocks.length} names=${msgToolUseBlocks.map(block => block.name).join(',')}`,
+                )
                 toolUseBlocks.push(...msgToolUseBlocks)
                 needsFollowUp = true
               }
@@ -839,6 +925,9 @@ async function* queryLoop(
                 !toolUseContext.abortController.signal.aborted
               ) {
                 for (const toolBlock of msgToolUseBlocks) {
+                  appendVisibleLog(
+                    `[Query] streaming executor addTool: id=${toolBlock.id} name=${toolBlock.name}`,
+                  )
                   streamingToolExecutor.addTool(toolBlock, message)
                 }
               }
@@ -850,6 +939,20 @@ async function* queryLoop(
             ) {
               for (const result of streamingToolExecutor.getCompletedResults()) {
                 if (result.message) {
+                  const toolUseIds =
+                    result.message.type === 'user' &&
+                    Array.isArray(result.message.message.content)
+                      ? result.message.message.content
+                          .filter(
+                            block =>
+                              block.type === 'tool_result' &&
+                              'tool_use_id' in block,
+                          )
+                          .map(block => block.tool_use_id)
+                      : []
+                  appendVisibleLog(
+                    `[Query] streaming executor result: type=${result.message.type} tool_result_ids=${toolUseIds.join(',') || 'none'}`,
+                  )
                   yield result.message
                   toolResults.push(
                     ...normalizeMessagesForAPI(
@@ -1061,6 +1164,39 @@ async function* queryLoop(
 
     if (!needsFollowUp) {
       const lastMessage = assistantMessages.at(-1)
+      if (
+        shouldRetryExecutionTurnWithoutToolUse(
+          messagesForQuery,
+          assistantMessages,
+          toolUseContext.options.tools.length,
+          state.transition,
+        )
+      ) {
+        appendVisibleLog(
+          `[Query] execution turn retry: provider=${getAPIProvider()} prompt=${JSON.stringify(getLastHumanTurnText(messagesForQuery).slice(0, 160))}`,
+        )
+        state = {
+          messages: [
+            ...messagesForQuery,
+            ...assistantMessages,
+            createUserMessage({
+              content:
+                'Execution request detected. If completing this requires checking the workspace, running commands, using git, or reading/writing files, call the appropriate tool now instead of only describing the plan.',
+              isMeta: true,
+            }),
+          ],
+          toolUseContext,
+          autoCompactTracking: tracking,
+          maxOutputTokensRecoveryCount: 0,
+          hasAttemptedReactiveCompact,
+          maxOutputTokensOverride: undefined,
+          pendingToolUseSummary: undefined,
+          stopHookActive: undefined,
+          turnCount,
+          transition: { reason: 'execution_turn_tool_retry' } as Continue,
+        }
+        continue
+      }
 
       // Prompt-too-long recovery: the streaming loop withheld the error
       // (see withheldByCollapse / withheldByReactive above). Try collapse

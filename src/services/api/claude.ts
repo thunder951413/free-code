@@ -10,6 +10,7 @@ import type {
   BetaRawMessageStreamEvent,
   BetaRequestDocumentBlock,
   BetaStopReason,
+  BetaToolChoiceAny,
   BetaToolChoiceAuto,
   BetaToolChoiceTool,
   BetaToolResultBlockParam,
@@ -72,6 +73,7 @@ import { isEnvTruthy } from '../../utils/envUtils.js'
 import { errorMessage } from '../../utils/errors.js'
 import { computeFingerprintFromMessages } from '../../utils/fingerprint.js'
 import { captureAPIRequest, logError } from '../../utils/log.js'
+import { appendVisibleLog } from '../../utils/visibleLog.js'
 import {
   createAssistantAPIErrorMessage,
   createUserMessage,
@@ -682,7 +684,11 @@ export function assistantMessageToMessageParam(
 export type Options = {
   getToolPermissionContext: () => Promise<ToolPermissionContext>
   model: string
-  toolChoice?: BetaToolChoiceTool | BetaToolChoiceAuto | undefined
+  toolChoice?:
+    | BetaToolChoiceTool
+    | BetaToolChoiceAuto
+    | BetaToolChoiceAny
+    | undefined
   isNonInteractiveSession: boolean
   extraToolSchemas?: BetaToolUnion[]
   maxOutputTokensOverride?: number
@@ -1114,10 +1120,56 @@ async function* queryModelWithOpenAI(
   let ttftMs = 0
   const newMessages: AssistantMessage[] = []
   const contentBlocks: (BetaContentBlock | ConnectorTextBlock)[] = []
+  const yieldedContentBlockIndexes = new Set<number>()
   let usage: NonNullableUsage = EMPTY_USAGE
   let stopReason: BetaStopReason | null = null
   let partialMessage: BetaMessage | undefined = undefined
   let costUSD = 0
+
+  const flushPendingContentBlocks = function* (
+    reason: 'content_block_stop' | 'message_delta_fallback' | 'stream_end_fallback',
+    targetIndex?: number,
+  ): Generator<AssistantMessage, void, undefined> {
+    if (!partialMessage) {
+      return
+    }
+
+    const indexes =
+      targetIndex !== undefined
+        ? [targetIndex]
+        : Array.from({ length: contentBlocks.length }, (_, index) => index)
+
+    for (const index of indexes) {
+      if (yieldedContentBlockIndexes.has(index)) {
+        continue
+      }
+      const contentBlock = contentBlocks[index]
+      if (!contentBlock) {
+        continue
+      }
+
+      const m: AssistantMessage = {
+        message: {
+          ...partialMessage,
+          content: normalizeContentFromAPI(
+            [contentBlock] as BetaContentBlock[],
+            tools,
+            options.agentId,
+          ),
+        },
+        requestId: undefined,
+        type: 'assistant',
+        uuid: randomUUID(),
+        timestamp: new Date().toISOString(),
+      }
+      yieldedContentBlockIndexes.add(index)
+      newMessages.push(m)
+      appendVisibleLog(
+        `[OpenAI] flushed assistant content block: reason=${reason} index=${index} types=${m.message.content.map(block => block.type).join(',')}`,
+      )
+      yield m
+    }
+  }
 
   startSessionActivity('api_call')
   try {
@@ -1164,29 +1216,26 @@ async function* queryModelWithOpenAI(
           break
         }
         case 'content_block_stop': {
-          const contentBlock = contentBlocks[part.index]
-          if (!contentBlock || !partialMessage) continue
-          const m: AssistantMessage = {
-            message: {
-              ...partialMessage,
-              content: normalizeContentFromAPI(
-                [contentBlock] as BetaContentBlock[],
-                tools,
-                options.agentId,
-              ),
-            },
-            requestId: undefined,
-            type: 'assistant',
-            uuid: randomUUID(),
-            timestamp: new Date().toISOString(),
-          }
-          newMessages.push(m)
-          yield m
+          appendVisibleLog(
+            `[OpenAI] content_block_stop received: index=${part.index} has_block=${contentBlocks[part.index] ? 'yes' : 'no'}`,
+          )
+          yield* flushPendingContentBlocks('content_block_stop', part.index)
           break
         }
         case 'message_delta': {
           usage = updateUsage(usage, part.usage)
           stopReason = part.delta.stop_reason
+          if (
+            stopReason === 'tool_use' &&
+            partialMessage &&
+            newMessages.length === 0 &&
+            contentBlocks.some(Boolean)
+          ) {
+            appendVisibleLog(
+              '[OpenAI] message_delta fallback: flushing pending tool/content blocks before tool_use stop',
+            )
+            yield* flushPendingContentBlocks('message_delta_fallback')
+          }
           const lastMsg = newMessages.at(-1)
           if (lastMsg) {
             lastMsg.message.usage = usage
@@ -1221,6 +1270,23 @@ async function* queryModelWithOpenAI(
     throw streamingError
   } finally {
     stopSessionActivity('api_call')
+  }
+
+  if (
+    stopReason === 'tool_use' &&
+    partialMessage &&
+    newMessages.length === 0 &&
+    contentBlocks.some(Boolean)
+  ) {
+    appendVisibleLog(
+      '[OpenAI] stream end fallback: flushing pending tool/content blocks after stream completed',
+    )
+    yield* flushPendingContentBlocks('stream_end_fallback')
+    const lastMsg = newMessages.at(-1)
+    if (lastMsg) {
+      lastMsg.message.usage = usage
+      lastMsg.message.stop_reason = stopReason
+    }
   }
 
   // Log final result
