@@ -1,7 +1,16 @@
 import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from '../../services/analytics/index.js'
 import { isEnvTruthy } from '../envUtils.js'
+import { getInitialSettings } from '../settings/settings.js'
 
-export type APIProvider = 'firstParty' | 'bedrock' | 'vertex' | 'foundry'
+export type APIProvider = 'firstParty' | 'bedrock' | 'vertex' | 'foundry' | 'openai'
+
+function isOpenAIEnabledInSettings(): boolean {
+  const settings = getInitialSettings()
+  return (
+    isEnvTruthy(settings.env?.CLAUDE_CODE_USE_OPENAI) ||
+    !!settings.openaiApiKey?.trim()
+  )
+}
 
 export function getAPIProvider(): APIProvider {
   return isEnvTruthy(process.env.CLAUDE_CODE_USE_BEDROCK)
@@ -10,7 +19,10 @@ export function getAPIProvider(): APIProvider {
       ? 'vertex'
       : isEnvTruthy(process.env.CLAUDE_CODE_USE_FOUNDRY)
         ? 'foundry'
-        : 'firstParty'
+        : isEnvTruthy(process.env.CLAUDE_CODE_USE_OPENAI) ||
+            isOpenAIEnabledInSettings()
+          ? 'openai'
+          : 'firstParty'
 }
 
 export function getAPIProviderForStatsig(): AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS {

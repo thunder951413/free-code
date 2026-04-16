@@ -25,6 +25,7 @@ import { jsonStringify } from '../utils/slowOperations.js'
 import { isToolReferenceBlock } from '../utils/toolSearch.js'
 import { getAPIMetadata, getExtraBodyParams } from './api/claude.js'
 import { getAnthropicClient } from './api/client.js'
+import { getOpenAISmallFastModel, mapModelToOpenAI } from '../utils/model/openai.js'
 import { withTokenCountVCR } from './vcr.js'
 
 // Minimal values for token counting with thinking enabled
@@ -265,6 +266,10 @@ export async function countTokensViaHaikuFallback(
   // If we're on Vertex with thinking blocks, use Sonnet since Haiku 3.5 doesn't support thinking
   const isVertexWithThinking =
     isEnvTruthy(process.env.CLAUDE_CODE_USE_VERTEX) && containsThinking
+  // OpenAI provider: rough estimation since Anthropic token counting API doesn't apply
+  if (getAPIProvider() === 'openai') {
+    return roughTokenCountEstimationForMessages(messages as readonly { type: string; message?: { content?: unknown } }[])
+  }
   // Otherwise always use Haiku - Haiku 4.5 supports thinking blocks.
   // WARNING: if you change this to use a non-Haiku model, this request will fail in 1P unless it uses getCLISyspromptPrefix.
   // Note: We don't need Sonnet for tool_reference blocks because we strip them via

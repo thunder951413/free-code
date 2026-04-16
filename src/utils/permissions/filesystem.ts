@@ -64,7 +64,7 @@ export const DANGEROUS_FILES = [
   '.profile',
   '.ripgreprc',
   '.mcp.json',
-  '.claude.json',
+  '.freecode.json',
 ] as const
 
 /**
@@ -75,7 +75,7 @@ export const DANGEROUS_DIRECTORIES = [
   '.git',
   '.vscode',
   '.idea',
-  '.claude',
+  '.freecode',
 ] as const
 
 /**
@@ -92,11 +92,11 @@ export function normalizeCaseForComparison(path: string): string {
 }
 
 /**
- * If filePath is inside a .claude/skills/{name}/ directory (project or global),
+ * If filePath is inside a .freecode/skills/{name}/ directory (project or global),
  * return the skill name and a session-allow pattern scoped to just that skill.
  * Used to offer a narrower "allow edits to this skill only" option in the
  * permission dialog and SDK suggestions, so iterating on one skill doesn't
- * require granting session access to all of .claude/ (settings.json, hooks/, etc.).
+ * require granting session access to all of .freecode/ (settings.json, hooks/, etc.).
  */
 export function getClaudeSkillScope(
   filePath: string,
@@ -106,12 +106,12 @@ export function getClaudeSkillScope(
 
   const bases = [
     {
-      dir: expandPath(join(getOriginalCwd(), '.claude', 'skills')),
-      prefix: '/.claude/skills/',
+      dir: expandPath(join(getOriginalCwd(), '.freecode', 'skills')),
+      prefix: '/.freecode/skills/',
     },
     {
-      dir: expandPath(join(homedir(), '.claude', 'skills')),
-      prefix: '~/.claude/skills/',
+      dir: expandPath(join(homedir(), '.freecode', 'skills')),
+      prefix: '~/.freecode/skills/',
     },
   ]
 
@@ -145,7 +145,7 @@ export function getClaudeSkillScope(
         // Reject glob metacharacters. skillName is interpolated into a
         // gitignore pattern consumed by ignore().add() in matchingRuleForInput
         // at step 1.6. A directory literally named '*' (valid on POSIX) would
-        // produce '/.claude/skills/*/**' which matches ALL skills. Return null
+        // produce '/.freecode/skills/*/**' which matches ALL skills. Return null
         // to fall through to generateSuggestions() instead.
         if (/[*?[\]]/.test(skillName)) return null
         return { skillName, pattern: prefix + skillName + '/**' }
@@ -199,7 +199,7 @@ function getSettingsPaths(): string[] {
 
 export function isClaudeSettingsPath(filePath: string): boolean {
   // SECURITY: Normalize path structure first to prevent bypass via redundant ./
-  // sequences like `./.claude/./settings.json` which would evade the endsWith() check
+  // sequences like `./.freecode/./settings.json` which would evade the endsWith() check
   const expandedPath = expandPath(filePath)
 
   // Normalize for case-insensitive comparison to prevent bypassing security
@@ -211,7 +211,7 @@ export function isClaudeSettingsPath(filePath: string): boolean {
     normalizedPath.endsWith(`${sep}.claude${sep}settings.json`) ||
     normalizedPath.endsWith(`${sep}.claude${sep}settings.local.json`)
   ) {
-    // Include .claude/settings.json even for other projects
+    // Include .freecode/settings.json even for other projects
     return true
   }
   // Check for current project's settings files (including managed settings and CLI args)
@@ -227,12 +227,12 @@ function isClaudeConfigFilePath(filePath: string): boolean {
     return true
   }
 
-  // Check if file is within .claude/commands or .claude/agents directories
+  // Check if file is within .freecode/commands or .freecode/agents directories
   // using proper path segment validation (not string matching with includes())
   // pathInWorkingPath now handles case-insensitive comparison to prevent bypasses
-  const commandsDir = join(getOriginalCwd(), '.claude', 'commands')
-  const agentsDir = join(getOriginalCwd(), '.claude', 'agents')
-  const skillsDir = join(getOriginalCwd(), '.claude', 'skills')
+  const commandsDir = join(getOriginalCwd(), '.freecode', 'commands')
+  const agentsDir = join(getOriginalCwd(), '.freecode', 'agents')
+  const skillsDir = join(getOriginalCwd(), '.freecode', 'skills')
 
   return (
     pathInWorkingPath(filePath, commandsDir) ||
@@ -279,7 +279,7 @@ function isSessionMemoryPath(absolutePath: string): boolean {
 
 /**
  * Check if file is within the current project's directory.
- * Path format: ~/.claude/projects/{sanitized-cwd}/...
+ * Path format: ~/.freecode/projects/{sanitized-cwd}/...
  */
 function isProjectDirPath(absolutePath: string): boolean {
   const projectDir = getProjectDir(getCwd())
@@ -453,11 +453,11 @@ function isDangerousFilePathToAutoEdit(path: string): boolean {
         continue
       }
 
-      // Special case: .claude/worktrees/ is a structural path (where Claude stores
+      // Special case: .freecode/worktrees/ is a structural path (where Claude stores
       // git worktrees), not a user-created dangerous directory. Skip the .claude
       // segment when it's followed by 'worktrees'. Any nested .claude directories
       // within the worktree (not followed by 'worktrees') are still blocked.
-      if (dir === '.claude') {
+      if (dir === '.freecode') {
         const nextSegment = pathSegments[i + 1]
         if (
           nextSegment &&
@@ -607,7 +607,7 @@ function hasSuspiciousWindowsPathPattern(path: string): boolean {
  *
  * This function performs comprehensive safety checks including:
  * - Suspicious Windows path patterns (NTFS streams, 8.3 names, long path prefixes, etc.)
- * - Claude config files (.claude/settings.json, .claude/commands/, .claude/agents/)
+ * - Claude config files (.freecode/settings.json, .freecode/commands/, .freecode/agents/)
  * - MCP CLI state files (managed internally by Claude Code)
  * - Dangerous files (.bashrc, .gitconfig, .git/, .vscode/, .idea/, etc.)
  *
@@ -897,7 +897,7 @@ function patternWithRoot(
       root: homedir().normalize('NFC'),
     }
   } else if (pattern.startsWith(DIR_SEP)) {
-    // Patterns starting with / resolve relative to the directory where settings are stored (without .claude/)
+    // Patterns starting with / resolve relative to the directory where settings are stored (without .freecode/)
     return {
       relativePattern: pattern,
       root: rootPathForSource(source),
@@ -1249,10 +1249,10 @@ export function checkWritePermissionForTool<Input extends AnyObject>(
     return internalEditResult
   }
 
-  // 1.6. Check for .claude/** allow rules BEFORE safety checks
-  // This allows session-level permissions to bypass the safety blocks for .claude/
+  // 1.6. Check for .freecode/** allow rules BEFORE safety checks
+  // This allows session-level permissions to bypass the safety blocks for .freecode/
   // We only allow this for session-level rules to prevent users from accidentally
-  // permanently granting broad access to their .claude/ folder.
+  // permanently granting broad access to their .freecode/ folder.
   //
   // matchingRuleForInput returns the first match across all sources. If the user
   // also has a broader Edit(.claude) rule in userSettings (e.g. from sandbox
@@ -1271,13 +1271,13 @@ export function checkWritePermissionForTool<Input extends AnyObject>(
     'allow',
   )
   if (claudeFolderAllowRule) {
-    // Check if this rule is scoped under .claude/ (project or global).
-    // Accepts both the broad patterns ('/.claude/**', '~/.claude/**') and
-    // narrowed ones like '/.claude/skills/my-skill/**' so users can grant
+    // Check if this rule is scoped under .freecode/ (project or global).
+    // Accepts both the broad patterns ('/.freecode/**', '~/.freecode/**') and
+    // narrowed ones like '/.freecode/skills/my-skill/**' so users can grant
     // session access to a single skill without also exposing settings.json
     // or hooks/. The rule already matched the path via matchingRuleForInput;
     // this is an additional scope check. Reject '..' to prevent a rule like
-    // '/.claude/../**' from leaking this bypass outside .claude/.
+    // '/.freecode/../**' from leaking this bypass outside .freecode/.
     const ruleContent = claudeFolderAllowRule.ruleValue.ruleContent
     if (
       ruleContent &&
@@ -1304,9 +1304,9 @@ export function checkWritePermissionForTool<Input extends AnyObject>(
   // permission to edit protected files
   const safetyCheck = checkPathSafetyForAutoEdit(path, pathsToCheck)
   if (!safetyCheck.safe) {
-    // SDK suggestion: if under .claude/skills/{name}/, emit the narrowed
+    // SDK suggestion: if under .freecode/skills/{name}/, emit the narrowed
     // session-scoped addRules that step 1.6 will honor on the next call.
-    // Everything else (.claude/settings.json, .git/, .vscode/, .idea/) falls
+    // Everything else (.freecode/settings.json, .git/, .vscode/, .idea/) falls
     // back to generateSuggestions — its setMode suggestion doesn't bypass
     // this check, but preserving it avoids a surprising empty array.
     const skillScope = getClaudeSkillScope(path)
@@ -1511,7 +1511,7 @@ export function checkEditableInternalPath(
   // Template job's own directory. Env key hardcoded (vs importing JOB_ENV_KEY
   // from jobs/state) so tree-shaking eliminates the string from external
   // builds — spawn.test.ts asserts the string matches. Hijack guard: the env
-  // var value must itself resolve under ~/.claude/jobs/. Symlink guard: every
+  // var value must itself resolve under ~/.freecode/jobs/. Symlink guard: every
   // resolved form of the target (lexical + symlink chain) must fall under some
   // resolved form of the job dir, so a symlink inside the job dir pointing at
   // e.g. ~/.ssh/authorized_keys does not get a free write. Resolving both
@@ -1525,7 +1525,7 @@ export function checkEditableInternalPath(
       const jobsRootForms = getPathsForPermissionCheck(jobsRoot).map(normalize)
       // Hijack guard: every resolved form of the job dir must sit under
       // some resolved form of the jobs root. Resolving both sides handles
-      // the case where ~/.claude is a symlink (e.g. to /data/claude-config).
+      // the case where ~/.freecode is a symlink (e.g. to /data/claude-config).
       const isUnderJobsRoot = jobDirForms.every(jd =>
         jobsRootForms.some(jr => jd.startsWith(jr + sep)),
       )
@@ -1564,7 +1564,7 @@ export function checkEditableInternalPath(
 
   // Memdir directory (persistent memory for cross-session learning)
   // This pre-safety-check carve-out exists because the default path is under
-  // ~/.claude/, which is in DANGEROUS_DIRECTORIES. The CLAUDE_COWORK_MEMORY_PATH_OVERRIDE
+  // ~/.freecode/, which is in DANGEROUS_DIRECTORIES. The CLAUDE_COWORK_MEMORY_PATH_OVERRIDE
   // override is an arbitrary caller-designated directory with no such conflict,
   // so it gets NO special permission treatment here — writes go through normal
   // permission flow (step 5 → ask). SDK callers who want silent memory should
@@ -1580,16 +1580,16 @@ export function checkEditableInternalPath(
     }
   }
 
-  // .claude/launch.json — desktop preview config (dev server command + port).
+  // .freecode/launch.json — desktop preview config (dev server command + port).
   // The desktop's preview_start MCP tool instructs Claude to create/update
   // this file as part of the preview workflow. Without this carve-out the
-  // .claude/ DANGEROUS_DIRECTORIES check prompts for it, which in SDK mode
+  // .freecode/ DANGEROUS_DIRECTORIES check prompts for it, which in SDK mode
   // cascades: user clicks "Always allow" → setMode:acceptEdits suggestion
   // applied → silent downgrade from auto mode. Matches the project-level
-  // .claude/ only (not ~/.claude/) since launch.json is per-project.
+  // .freecode/ only (not ~/.freecode/) since launch.json is per-project.
   if (
     normalizeCaseForComparison(normalizedPath) ===
-    normalizeCaseForComparison(join(getOriginalCwd(), '.claude', 'launch.json'))
+    normalizeCaseForComparison(join(getOriginalCwd(), '.freecode', 'launch.json'))
   ) {
     return {
       behavior: 'allow',
@@ -1629,7 +1629,7 @@ export function checkReadableInternalPath(
   }
 
   // Project directory (for reading past session memories)
-  // Path format: ~/.claude/projects/{sanitized-cwd}/...
+  // Path format: ~/.freecode/projects/{sanitized-cwd}/...
   if (isProjectDirPath(normalizedPath)) {
     return {
       behavior: 'allow',
@@ -1724,7 +1724,7 @@ export function checkReadableInternalPath(
     }
   }
 
-  // Tasks directory (~/.claude/tasks/) for swarm task coordination
+  // Tasks directory (~/.freecode/tasks/) for swarm task coordination
   const tasksDir = join(getClaudeConfigHomeDir(), 'tasks') + sep
   if (
     normalizedPath === tasksDir.slice(0, -1) ||
@@ -1740,7 +1740,7 @@ export function checkReadableInternalPath(
     }
   }
 
-  // Teams directory (~/.claude/teams/) for swarm coordination
+  // Teams directory (~/.freecode/teams/) for swarm coordination
   const teamsReadDir = join(getClaudeConfigHomeDir(), 'teams') + sep
   if (
     normalizedPath === teamsReadDir.slice(0, -1) ||

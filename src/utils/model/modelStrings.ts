@@ -6,6 +6,7 @@ import { logError } from '../log.js'
 import { sequential } from '../sequential.js'
 import { getInitialSettings } from '../settings/settings.js'
 import { findFirstMatch, getBedrockInferenceProfiles } from './bedrock.js'
+import { getOpenAIModel, getOpenAISmallFastModel } from './openai.js'
 import {
   ALL_MODEL_CONFIGS,
   CANONICAL_ID_TO_KEY,
@@ -26,6 +27,21 @@ function getBuiltinModelStrings(provider: APIProvider): ModelStrings {
   const out = {} as ModelStrings
   for (const key of MODEL_KEYS) {
     out[key] = ALL_MODEL_CONFIGS[key][provider]
+  }
+  if (provider === 'openai') {
+    const mainModel = getOpenAIModel()
+    const smallFastModel = getOpenAISmallFastModel()
+    out.haiku35 = smallFastModel
+    out.haiku45 = smallFastModel
+    out.sonnet35 = mainModel
+    out.sonnet37 = mainModel
+    out.sonnet40 = mainModel
+    out.sonnet45 = mainModel
+    out.sonnet46 = mainModel
+    out.opus40 = mainModel
+    out.opus41 = mainModel
+    out.opus45 = mainModel
+    out.opus46 = mainModel
   }
   return out
 }

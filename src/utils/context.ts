@@ -4,6 +4,8 @@ import { getGlobalConfig } from './config.js'
 import { isEnvTruthy } from './envUtils.js'
 import { getCanonicalName } from './model/model.js'
 import { getModelCapability } from './model/modelCapabilities.js'
+import { getOpenAIMaxOutputTokens, getOpenAIContextWindow, isOpenAIModel } from './model/openai.js'
+import { getAPIProvider } from './model/providers.js'
 
 // Model context window size (200k tokens for all models right now)
 export const MODEL_CONTEXT_WINDOW_DEFAULT = 200_000
@@ -195,6 +197,9 @@ export function getModelMaxOutputTokens(model: string): {
   } else if (m.includes('3-7-sonnet')) {
     defaultTokens = 32_000
     upperLimit = 64_000
+  } else if (getAPIProvider() === 'openai' && isOpenAIModel(m)) {
+    defaultTokens = getOpenAIMaxOutputTokens(m)
+    upperLimit = getOpenAIMaxOutputTokens(m)
   } else {
     defaultTokens = MAX_OUTPUT_TOKENS_DEFAULT
     upperLimit = MAX_OUTPUT_TOKENS_UPPER_LIMIT

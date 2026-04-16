@@ -298,8 +298,12 @@ export async function getAnthropicClient({
   }
 
   // Determine authentication method based on available tokens
+  const resolvedApiKey = isClaudeAISubscriber() ? null : apiKey || getAnthropicApiKey()
+  // When using OpenAI provider without an Anthropic key, provide a placeholder
+  // so the Anthropic client can be instantiated (it won't be used for API calls)
+  const effectiveApiKey = resolvedApiKey || (getAPIProvider() === 'openai' ? 'sk-placeholder-for-openai-provider' : null)
   const clientConfig: ConstructorParameters<typeof Anthropic>[0] = {
-    apiKey: isClaudeAISubscriber() ? null : apiKey || getAnthropicApiKey(),
+    apiKey: effectiveApiKey,
     authToken: isClaudeAISubscriber()
       ? getClaudeAIOAuthTokens()?.accessToken
       : undefined,

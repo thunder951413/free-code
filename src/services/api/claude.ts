@@ -536,6 +536,12 @@ export async function verifyApiKey(
     return true
   }
 
+  // OpenAI provider: verify using the OpenAI adapter
+  if (getAPIProvider() === 'openai') {
+    const { verifyOpenAIApiKey } = await import('./openai.js')
+    return verifyOpenAIApiKey()
+  }
+
   try {
     // WARNING: if you change this to use a non-Haiku model, this request will fail in 1P unless it uses getCLISyspromptPrefix.
     const model = getSmallFastModel()
@@ -1014,6 +1020,231 @@ export function stripExcessMediaItems(
   }) as (UserMessage | AssistantMessage)[]
 }
 
+/**
+ * OpenAI provider path: build params the same way as the Anthropic path,
+ * then delegate to the OpenAI adapter which handles format conversion
+ * and yields BetaRawMessageStreamEvent objects. The stream processing
+ * logic is reused from the Anthropic path.
+ */
+async function* queryModelWithOpenAI(
+  messages: Message[],
+  systemPrompt: SystemPrompt,
+  thinkingConfig: ThinkingConfig,
+  tools: Tools,
+  signal: AbortSignal,
+  options: Options,
+): AsyncGenerator<
+  StreamEvent | AssistantMessage | SystemAPIErrorMessage,
+  void
+> {
+  const { streamWithOpenAI } = await import('./openai.js')
+  const { mapModelToOpenAI } = await import('../../utils/model/openai.js')
+
+  // Build tool schemas (same as Anthropic path)
+  queryCheckpoint('query_tool_schema_build_start')
+  const toolSchemas = await Promise.all(
+    tools.map(tool =>
+      toolToAPISchema(tool, {
+        getToolPermissionContext: options.getToolPermissionContext,
+        tools,
+        agents: options.agents,
+        allowedAgentTypes: options.allowedAgentTypes,
+        model: options.model,
+      }),
+    ),
+  )
+  queryCheckpoint('query_tool_schema_build_end')
+
+  // Normalize messages
+  queryCheckpoint('query_message_normalization_start')
+  let messagesForAPI = normalizeMessagesForAPI(messages, tools)
+  messagesForAPI = ensureToolResultPairing(messagesForAPI)
+  queryCheckpoint('query_message_normalization_end')
+
+  // Build system prompt
+  const fingerprint = computeFingerprintFromMessages(messagesForAPI)
+  systemPrompt = asSystemPrompt(
+    [
+      getAttributionHeader(fingerprint),
+      getCLISyspromptPrefix({
+        isNonInteractive: options.isNonInteractiveSession,
+        hasAppendSystemPrompt: options.hasAppendSystemPrompt,
+      }),
+      ...systemPrompt,
+    ].filter(Boolean),
+  )
+
+  const enablePromptCaching = options.enablePromptCaching ?? getPromptCachingEnabled(options.model)
+  const system = buildSystemPromptBlocks(systemPrompt, enablePromptCaching, {
+    querySource: options.querySource,
+  })
+  const allTools = [...toolSchemas, ...(options.extraToolSchemas ?? [])]
+
+  // Build Anthropic-format params for the adapter to convert
+  const maxOutputTokens =
+    options.maxOutputTokensOverride ||
+    getMaxOutputTokensForModel(options.model)
+
+  const apiMessages: MessageParam[] = messagesForAPI
+    .filter((msg): msg is UserMessage | AssistantMessage =>
+      msg.type === 'user' || msg.type === 'assistant'
+    )
+    .map(msg => {
+      if (msg.type === 'user') {
+        return userMessageToMessageParam(msg, false, enablePromptCaching, options.querySource)
+      }
+      return assistantMessageToMessageParam(msg, false, enablePromptCaching, options.querySource)
+    })
+
+  const params: BetaMessageStreamParams = {
+    model: mapModelToOpenAI(options.model),
+    messages: apiMessages,
+    system,
+    tools: allTools,
+    max_tokens: maxOutputTokens,
+    ...(options.toolChoice && { tool_choice: options.toolChoice }),
+    ...(options.temperatureOverride !== undefined && { temperature: options.temperatureOverride }),
+    metadata: getAPIMetadata(),
+  }
+
+  captureAPIRequest(params, options.querySource)
+  queryCheckpoint('query_api_request_sent')
+
+  const start = Date.now()
+  let ttftMs = 0
+  const newMessages: AssistantMessage[] = []
+  const contentBlocks: (BetaContentBlock | ConnectorTextBlock)[] = []
+  let usage: NonNullableUsage = EMPTY_USAGE
+  let stopReason: BetaStopReason | null = null
+  let partialMessage: BetaMessage | undefined = undefined
+  let costUSD = 0
+
+  startSessionActivity('api_call')
+  try {
+    const streamGen = streamWithOpenAI(params, signal)
+
+    for await (const part of streamGen) {
+      switch (part.type) {
+        case 'message_start': {
+          partialMessage = part.message
+          ttftMs = Date.now() - start
+          usage = updateUsage(usage, part.message?.usage)
+          break
+        }
+        case 'content_block_start':
+          switch (part.content_block.type) {
+            case 'tool_use':
+              contentBlocks[part.index] = {
+                ...part.content_block,
+                input: '',
+              }
+              break
+            case 'text':
+              contentBlocks[part.index] = {
+                ...part.content_block,
+                text: '',
+              }
+              break
+            default:
+              contentBlocks[part.index] = { ...part.content_block }
+              break
+          }
+          break
+        case 'content_block_delta': {
+          const contentBlock = contentBlocks[part.index]
+          if (!contentBlock) continue
+          const delta = part.delta
+          if (delta.type === 'text_delta' && contentBlock.type === 'text') {
+            contentBlock.text += delta.text
+          } else if (delta.type === 'input_json_delta' && (contentBlock.type === 'tool_use' || contentBlock.type === 'server_tool_use')) {
+            if (typeof contentBlock.input === 'string') {
+              contentBlock.input += delta.partial_json
+            }
+          }
+          break
+        }
+        case 'content_block_stop': {
+          const contentBlock = contentBlocks[part.index]
+          if (!contentBlock || !partialMessage) continue
+          const m: AssistantMessage = {
+            message: {
+              ...partialMessage,
+              content: normalizeContentFromAPI(
+                [contentBlock] as BetaContentBlock[],
+                tools,
+                options.agentId,
+              ),
+            },
+            requestId: undefined,
+            type: 'assistant',
+            uuid: randomUUID(),
+            timestamp: new Date().toISOString(),
+          }
+          newMessages.push(m)
+          yield m
+          break
+        }
+        case 'message_delta': {
+          usage = updateUsage(usage, part.usage)
+          stopReason = part.delta.stop_reason
+          const lastMsg = newMessages.at(-1)
+          if (lastMsg) {
+            lastMsg.message.usage = usage
+            lastMsg.message.stop_reason = stopReason
+          }
+          const costUSDForPart = calculateUSDCost(options.model, usage)
+          costUSD += addToTotalSessionCost(costUSDForPart, usage, options.model)
+
+          if (stopReason === 'max_tokens') {
+            yield createAssistantAPIErrorMessage({
+              content: `${API_ERROR_MESSAGE_PREFIX}: Response exceeded the ${maxOutputTokens} output token maximum.`,
+              apiError: 'max_output_tokens',
+              error: 'max_output_tokens',
+            })
+          }
+          break
+        }
+        case 'message_stop':
+          break
+      }
+
+      yield {
+        type: 'stream_event',
+        event: part,
+        ...(part.type === 'message_start' ? { ttftMs } : undefined),
+      }
+    }
+  } catch (streamingError) {
+    if (streamingError instanceof APIUserAbortError) {
+      if (signal.aborted) return
+    }
+    throw streamingError
+  } finally {
+    stopSessionActivity('api_call')
+  }
+
+  // Log final result
+  const now = Date.now()
+  logAPISuccessAndDuration({
+    model: options.model,
+    preNormalizedModel: options.model,
+    start,
+    startIncludingRetries: start,
+    ttftMs,
+    usage,
+    attempt: 1,
+    messageCount: messages.length,
+    messageTokens: 0,
+    requestId: null,
+    stopReason: stopReason ?? 'end_turn',
+    didFallBackToNonStreaming: false,
+    querySource: options.querySource,
+    costUSD,
+  })
+
+  setLastMainRequestId(undefined)
+}
+
 async function* queryModel(
   messages: Message[],
   systemPrompt: SystemPrompt,
@@ -1045,6 +1276,15 @@ async function* queryModel(
       new Error(CUSTOM_OFF_SWITCH_MESSAGE),
       options.model,
     )
+    return
+  }
+
+  // OpenAI provider: delegate entirely to the OpenAI adapter.
+  // The adapter converts Anthropic-format params to OpenAI format and
+  // converts streaming responses back to BetaRawMessageStreamEvent, so
+  // the downstream stream processing logic works unchanged.
+  if (getAPIProvider() === 'openai') {
+    yield* queryModelWithOpenAI(messages, systemPrompt, thinkingConfig, tools, signal, options)
     return
   }
 

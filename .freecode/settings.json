@@ -1,0 +1,9 @@
+{
+  "env": {
+    "CLAUDE_CODE_USE_OPENAI": "1"
+  },
+  "openaiApiKey": "sk-dff2a0ca8cc14efe9d96d16d69521116",
+  "openaiBaseUrl": "https://api.deepseek.com/",
+  "openaiModel": "deepseek-chat",
+  "openaiSmallFastModel": "deepseek-chat"
+}

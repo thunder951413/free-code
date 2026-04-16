@@ -163,6 +163,51 @@ export ANTHROPIC_API_KEY="sk-ant-..."
 ./cli /login
 ```
 
+### Using OpenAI
+
+Enable OpenAI via environment variable **or** `.freecode/settings.json`:
+
+**Option A: Environment variables**
+
+```bash
+# Enable OpenAI provider
+export CLAUDE_CODE_USE_OPENAI=1
+
+# Required: your OpenAI API key
+export OPENAI_API_KEY="sk-..."
+
+# Optional: custom base URL (default: https://api.openai.com/v1)
+# Supports any OpenAI-compatible API (e.g. Azure, local LLMs)
+export OPENAI_BASE_URL="https://api.openai.com/v1"
+
+# Optional: model overrides (default: gpt-4o / gpt-4o-mini)
+export OPENAI_MODEL="gpt-4o"
+export OPENAI_SMALL_FAST_MODEL="gpt-4o-mini"
+
+# Then run normally
+./cli
+```
+
+**Option B: `.freecode/settings.json`**
+
+Create `.freecode/settings.json` in your project (or `~/.freecode/settings.json` for global):
+
+```json
+{
+  "openaiApiKey": "sk-...",
+  "openaiBaseUrl": "https://api.openai.com/v1",
+  "openaiModel": "gpt-4o",
+  "openaiSmallFastModel": "gpt-4o-mini"
+}
+```
+
+Then set `CLAUDE_CODE_USE_OPENAI=1` and run `./cli`. Environment variables take
+precedence over settings.json values.
+
+The OpenAI adapter transparently converts between Anthropic's Messages API format
+and OpenAI's Chat Completions format, so all features (tool use, streaming,
+multi-turn conversations) work without modification.
+
 ### Quick test
 
 ```bash
@@ -218,7 +263,7 @@ src/
 | Schema validation | Zod v4 |
 | Code search | ripgrep (bundled) |
 | Protocols | MCP, LSP |
-| API | Anthropic Messages API |
+| API | Anthropic Messages API, OpenAI Chat Completions API |
 
 ---
 

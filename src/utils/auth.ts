@@ -101,6 +101,10 @@ export function isAnthropicAuthEnabled(): boolean {
   // --bare: API-key-only, never OAuth.
   if (isBareMode()) return false
 
+  if (getAPIProvider() !== 'firstParty') {
+    return false
+  }
+
   // `claude ssh` remote: ANTHROPIC_UNIX_SOCKET tunnels API calls through a
   // local auth-injecting proxy. The launcher sets CLAUDE_CODE_OAUTH_TOKEN as a
   // placeholder iff the local side is a subscriber (so the remote includes the
@@ -111,11 +115,6 @@ export function isAnthropicAuthEnabled(): boolean {
   if (process.env.ANTHROPIC_UNIX_SOCKET) {
     return !!process.env.CLAUDE_CODE_OAUTH_TOKEN
   }
-
-  const is3P =
-    isEnvTruthy(process.env.CLAUDE_CODE_USE_BEDROCK) ||
-    isEnvTruthy(process.env.CLAUDE_CODE_USE_VERTEX) ||
-    isEnvTruthy(process.env.CLAUDE_CODE_USE_FOUNDRY)
 
   // Check if user has configured an external API key source
   // This allows externally-provided API keys to work (without requiring proxy configuration)
@@ -134,14 +133,13 @@ export function isAnthropicAuthEnabled(): boolean {
     apiKeySource === 'ANTHROPIC_API_KEY' || apiKeySource === 'apiKeyHelper'
 
   // Disable Anthropic auth if:
-  // 1. Using 3rd party services (Bedrock/Vertex/Foundry)
+  // 1. Using a non-first-party provider
   // 2. User has an external API key (regardless of proxy configuration)
   // 3. User has an external auth token (regardless of proxy configuration)
   // this may cause issues if users have complex proxy / gateway "client-side creds" auth scenarios,
   // e.g. if they want to set X-Api-Key to a gateway key but use Anthropic OAuth for the Authorization
   // if we get reports of that, we should probably add an env var to force OAuth enablement
   const shouldDisableAuth =
-    is3P ||
     (hasExternalAuthToken && !isManagedOAuthContext()) ||
     (hasExternalApiKey && !isManagedOAuthContext())
 
@@ -158,6 +156,10 @@ export function getAuthTokenSource() {
     if (getConfiguredApiKeyHelper()) {
       return { source: 'apiKeyHelper' as const, hasToken: true }
     }
+    return { source: 'none' as const, hasToken: false }
+  }
+
+  if (getAPIProvider() !== 'firstParty') {
     return { source: 'none' as const, hasToken: false }
   }
 

@@ -14,8 +14,11 @@ import { logEvent } from '../services/analytics/index.js'
 import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from '../services/analytics/metadata.js'
 import { getAPIMetadata } from '../services/api/claude.js'
 import { getAnthropicClient } from '../services/api/client.js'
+import { createWithOpenAI } from '../services/api/openai.js'
 import { getModelBetas, modelSupportsStructuredOutputs } from './betas.js'
 import { computeFingerprint } from './fingerprint.js'
+import { getAPIProvider } from './model/providers.js'
+import { mapModelToOpenAI } from './model/openai.js'
 import { normalizeModelStringForAPI } from './model/model.js'
 
 type MessageParam = Anthropic.MessageParam
@@ -121,21 +124,6 @@ export async function sideQuery(opts: SideQueryOptions): Promise<BetaMessage> {
     stop_sequences,
   } = opts
 
-  const client = await getAnthropicClient({
-    maxRetries,
-    model,
-    source: 'side_query',
-  })
-  const betas = [...getModelBetas(model)]
-  // Add structured-outputs beta if using output_format and provider supports it
-  if (
-    output_format &&
-    modelSupportsStructuredOutputs(model) &&
-    !betas.includes(STRUCTURED_OUTPUTS_BETA_HEADER)
-  ) {
-    betas.push(STRUCTURED_OUTPUTS_BETA_HEADER)
-  }
-
   // Extract first user message text for fingerprint
   const messageText = extractFirstUserMessageText(messages)
 
@@ -178,6 +166,57 @@ export async function sideQuery(opts: SideQueryOptions): Promise<BetaMessage> {
 
   const normalizedModel = normalizeModelStringForAPI(model)
   const start = Date.now()
+
+  // OpenAI provider: use the adapter's non-streaming create
+  if (getAPIProvider() === 'openai') {
+    const response = await createWithOpenAI(
+      {
+        model: mapModelToOpenAI(normalizedModel),
+        max_tokens,
+        system: systemBlocks,
+        messages,
+        ...(tools && { tools }),
+        ...(tool_choice && { tool_choice }),
+        ...(temperature !== undefined && { temperature }),
+        ...(stop_sequences && { stop_sequences }),
+        metadata: getAPIMetadata(),
+      },
+      signal ?? new AbortController().signal,
+    )
+    const now = Date.now()
+    const lastCompletion = getLastApiCompletionTimestamp()
+    logEvent('tengu_api_success', {
+      requestId: undefined as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
+      querySource: opts.querySource as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
+      model: normalizedModel as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
+      inputTokens: response.usage?.input_tokens ?? 0,
+      outputTokens: response.usage?.output_tokens ?? 0,
+      cachedInputTokens: 0,
+      uncachedInputTokens: 0,
+      durationMsIncludingRetries: now - start,
+      timeSinceLastApiCallMs:
+        lastCompletion !== null ? now - lastCompletion : undefined,
+    })
+    setLastApiCompletionTimestamp(now)
+    return response
+  }
+
+  // Anthropic provider path
+  const client = await getAnthropicClient({
+    maxRetries,
+    model,
+    source: 'side_query',
+  })
+  const betas = [...getModelBetas(model)]
+  // Add structured-outputs beta if using output_format and provider supports it
+  if (
+    output_format &&
+    modelSupportsStructuredOutputs(model) &&
+    !betas.includes(STRUCTURED_OUTPUTS_BETA_HEADER)
+  ) {
+    betas.push(STRUCTURED_OUTPUTS_BETA_HEADER)
+  }
+
   // biome-ignore lint/plugin: this IS the wrapper that handles OAuth attribution
   const response = await client.beta.messages.create(
     {
