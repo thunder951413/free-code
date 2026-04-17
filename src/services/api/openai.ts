@@ -109,6 +109,24 @@ function describeToolChoice(
   return toolChoice.type
 }
 
+function resolveOpenAIToolChoice(
+  toolChoice:
+    | OpenAI.ChatCompletionCreateParamsStreaming['tool_choice']
+    | OpenAI.ChatCompletionCreateParamsNonStreaming['tool_choice']
+    | undefined,
+  hasTools: boolean,
+):
+  | OpenAI.ChatCompletionCreateParamsStreaming['tool_choice']
+  | OpenAI.ChatCompletionCreateParamsNonStreaming['tool_choice']
+  | undefined {
+  if (toolChoice) {
+    return toolChoice
+  }
+  // OpenAI defaults to auto when tools are present, but some compatible
+  // providers only trigger tool calling when the field is sent explicitly.
+  return hasTools ? 'auto' : undefined
+}
+
 function getOpenAIClientConfig() {
   const settings = getInitialSettings()
   const apiKey = process.env.OPENAI_API_KEY || settings.openaiApiKey
@@ -514,9 +532,26 @@ function convertChunkToEvents(
   if (delta?.tool_calls) {
     for (const tc of delta.tool_calls) {
       const tcIndex = tc.index ?? 0
+      const existingBlockIdx = toolCallIndexMap.get(tcIndex)
 
       // Tool call start (has a name)
       if (tc.function?.name) {
+        if (existingBlockIdx !== undefined) {
+          emitVisibleOpenAILog(
+            `[OpenAI] tool call start reused: model=${model} index=${tcIndex} block_index=${existingBlockIdx} name=${tc.function.name} args_chars=${tc.function.arguments?.length ?? 0}`,
+          )
+          if (tc.function.arguments) {
+            events.push({
+              type: 'content_block_delta',
+              index: existingBlockIdx,
+              delta: {
+                type: 'input_json_delta',
+                partial_json: tc.function.arguments,
+              },
+            })
+          }
+          continue
+        }
         emitVisibleOpenAILog(
           `[OpenAI] tool call start: model=${model} index=${tcIndex} id=${tc.id ?? 'generated'} name=${tc.function.name} args_chars=${tc.function.arguments?.length ?? 0}`,
         )
@@ -561,19 +596,18 @@ function convertChunkToEvents(
       }
       // Tool call continuation (arguments only)
       else if (tc.function?.arguments) {
-        const blockIdx = toolCallIndexMap.get(tcIndex)
-        if (blockIdx === undefined) {
+        if (existingBlockIdx === undefined) {
           emitVisibleOpenAILog(
             `[OpenAI] tool call continuation dropped: model=${model} index=${tcIndex} reason=missing_block_index args_chars=${tc.function.arguments.length}`,
           )
           continue
         }
         emitVisibleOpenAILog(
-          `[OpenAI] tool call delta: model=${model} index=${tcIndex} block_index=${blockIdx} args_chars=${tc.function.arguments.length}`,
+          `[OpenAI] tool call delta: model=${model} index=${tcIndex} block_index=${existingBlockIdx} args_chars=${tc.function.arguments.length}`,
         )
         events.push({
           type: 'content_block_delta',
-          index: blockIdx,
+          index: existingBlockIdx,
           delta: {
             type: 'input_json_delta',
             partial_json: tc.function.arguments,
@@ -583,48 +617,61 @@ function convertChunkToEvents(
     }
   }
 
-  // --- finish ---
-  if (choice.finish_reason) {
-    // Close any open text block
-    if (hasOpenTextBlock && currentTextBlockIndex !== null) {
-      events.push({
-        type: 'content_block_stop',
-        index: currentTextBlockIndex,
-      })
-      currentTextBlockIndex = null
-      hasOpenTextBlock = false
-    }
+  return events
+}
 
-    for (const blockIdx of [...toolCallIndexMap.values()].sort((a, b) => a - b)) {
-      events.push({
-        type: 'content_block_stop',
-        index: blockIdx,
-      })
-    }
-    toolCallIndexMap.clear()
-
-    // Map OpenAI finish_reason to Anthropic stop_reason
-    let stopReason: BetaStopReason
-    switch (choice.finish_reason) {
-      case 'tool_calls':
-        stopReason = 'tool_use'
-        break
-      case 'stop':
-      default:
-        stopReason = 'end_turn'
-        break
-    }
-
-    events.push({
-      type: 'message_delta',
-      context_management: null,
-      delta: { container: null, stop_reason: stopReason, stop_sequence: null },
-      usage: { output_tokens: 0 } as unknown as BetaUsage,
-    })
-
-    events.push({ type: 'message_stop' })
+function choiceHasPayload(choice: ChatCompletionChunk['choices'][number] | undefined): boolean {
+  if (!choice) {
+    return false
   }
 
+  return Boolean(
+    (choice.delta?.content != null && choice.delta.content !== '') ||
+      (choice.delta?.tool_calls && choice.delta.tool_calls.length > 0),
+  )
+}
+
+function createFinishEvents(
+  finishReason: NonNullable<ChatCompletionChunk['choices'][number]['finish_reason']>,
+): BetaRawMessageStreamEvent[] {
+  const events: BetaRawMessageStreamEvent[] = []
+  const hadPendingToolCalls = toolCallIndexMap.size > 0
+
+  // Close any open text block.
+  if (hasOpenTextBlock && currentTextBlockIndex !== null) {
+    events.push({
+      type: 'content_block_stop',
+      index: currentTextBlockIndex,
+    })
+    currentTextBlockIndex = null
+    hasOpenTextBlock = false
+  }
+
+  for (const blockIdx of [...toolCallIndexMap.values()].sort((a, b) => a - b)) {
+    events.push({
+      type: 'content_block_stop',
+      index: blockIdx,
+    })
+  }
+  toolCallIndexMap.clear()
+
+  const stopReason: BetaStopReason =
+    finishReason === 'tool_calls' || hadPendingToolCalls ? 'tool_use' : 'end_turn'
+
+  if (finishReason !== 'tool_calls' && hadPendingToolCalls) {
+    emitVisibleOpenAILog(
+      `[OpenAI] finish_reason compatibility override: finish_reason=${finishReason} pending_tool_calls=yes mapped_stop_reason=tool_use`,
+    )
+  }
+
+  events.push({
+    type: 'message_delta',
+    context_management: null,
+    delta: { container: null, stop_reason: stopReason, stop_sequence: null },
+    usage: { output_tokens: 0 } as unknown as BetaUsage,
+  })
+
+  events.push({ type: 'message_stop' })
   return events
 }
 
@@ -650,6 +697,7 @@ export async function* streamWithOpenAI(
   const messages = convertMessages(params.messages, systemText)
   const tools = convertTools(params.tools)
   const toolChoice = convertToolChoice(params.tool_choice)
+  const resolvedToolChoice = resolveOpenAIToolChoice(toolChoice, Boolean(tools))
 
   const requestParams: OpenAI.ChatCompletionCreateParamsStreaming = {
     model,
@@ -658,16 +706,19 @@ export async function* streamWithOpenAI(
     ...(params.max_tokens && { max_tokens: params.max_tokens }),
     ...(params.temperature !== undefined && { temperature: params.temperature }),
     ...(tools && { tools }),
-    ...(toolChoice && { tool_choice: toolChoice }),
+    ...(resolvedToolChoice && { tool_choice: resolvedToolChoice }),
     ...(params.stop_sequences && { stop: params.stop_sequences }),
   }
 
   logForDebugging(`[OpenAI] Streaming request: model=${model}, messages=${messages.length}, tools=${tools?.length ?? 0}`)
   emitVisibleOpenAILog(
-    `[OpenAI] streaming request: model=${model} endpoint=${getChatCompletionsUrl(baseURL)} messages=${messages.length} tools=${tools?.length ?? 0} tool_choice=${describeToolChoice(toolChoice)} max_tokens=${params.max_tokens ?? 'default'}`,
+    `[OpenAI] streaming request: model=${model} endpoint=${getChatCompletionsUrl(baseURL)} messages=${messages.length} tools=${tools?.length ?? 0} tool_choice=${describeToolChoice(resolvedToolChoice)} max_tokens=${params.max_tokens ?? 'default'}`,
   )
 
   resetStreamState()
+  let pendingFinishReason:
+    | NonNullable<ChatCompletionChunk['choices'][number]['finish_reason']>
+    | undefined
 
   try {
     const stream = await client.chat.completions.create(requestParams, {
@@ -676,6 +727,13 @@ export async function* streamWithOpenAI(
 
     for await (const chunk of stream) {
       const choice = chunk.choices?.[0]
+      const hasPayload = choiceHasPayload(choice)
+      if (pendingFinishReason && hasPayload) {
+        emitVisibleOpenAILog(
+          `[OpenAI] protocol violation: received payload after finish_reason=${pendingFinishReason}; deferring stream close`,
+        )
+        pendingFinishReason = undefined
+      }
       if (choice?.finish_reason || choice?.delta?.tool_calls?.length) {
         emitVisibleOpenAILog(
           `[OpenAI] streaming chunk: model=${model} finish_reason=${choice?.finish_reason ?? 'none'} tool_calls=${choice?.delta?.tool_calls?.length ?? 0}`,
@@ -683,6 +741,18 @@ export async function* streamWithOpenAI(
       }
       const events = convertChunkToEvents(chunk, model)
       for (const event of events) {
+        yield event
+      }
+      if (choice?.finish_reason) {
+        pendingFinishReason = choice.finish_reason
+      }
+    }
+
+    if (pendingFinishReason) {
+      emitVisibleOpenAILog(
+        `[OpenAI] finalizing deferred finish_reason=${pendingFinishReason}`,
+      )
+      for (const event of createFinishEvents(pendingFinishReason)) {
         yield event
       }
     }
@@ -710,6 +780,7 @@ export async function createWithOpenAI(
   const messages = convertMessages(params.messages, systemText)
   const tools = convertTools(params.tools)
   const toolChoice = convertToolChoice(params.tool_choice)
+  const resolvedToolChoice = resolveOpenAIToolChoice(toolChoice, Boolean(tools))
 
   const requestParams: OpenAI.ChatCompletionCreateParamsNonStreaming = {
     model,
@@ -717,13 +788,13 @@ export async function createWithOpenAI(
     ...(params.max_tokens && { max_tokens: params.max_tokens }),
     ...(params.temperature !== undefined && { temperature: params.temperature }),
     ...(tools && { tools }),
-    ...(toolChoice && { tool_choice: toolChoice }),
+    ...(resolvedToolChoice && { tool_choice: resolvedToolChoice }),
     ...(params.stop_sequences && { stop: params.stop_sequences }),
   }
 
   logForDebugging(`[OpenAI] Non-streaming request: model=${model}, messages=${messages.length}`)
   emitVisibleOpenAILog(
-    `[OpenAI] non-streaming request: model=${model} endpoint=${getChatCompletionsUrl(baseURL)} messages=${messages.length} tools=${tools?.length ?? 0} tool_choice=${describeToolChoice(toolChoice)} max_tokens=${params.max_tokens ?? 'default'}`,
+    `[OpenAI] non-streaming request: model=${model} endpoint=${getChatCompletionsUrl(baseURL)} messages=${messages.length} tools=${tools?.length ?? 0} tool_choice=${describeToolChoice(resolvedToolChoice)} max_tokens=${params.max_tokens ?? 'default'}`,
   )
 
   let response: OpenAI.ChatCompletion
@@ -765,8 +836,13 @@ export async function createWithOpenAI(
   }
 
   let stopReason: BetaStopReason = 'end_turn'
-  if (choice.finish_reason === 'tool_calls') {
+  if (choice.message.tool_calls && choice.message.tool_calls.length > 0) {
     stopReason = 'tool_use'
+    if (choice.finish_reason !== 'tool_calls') {
+      emitVisibleOpenAILog(
+        `[OpenAI] non-streaming finish_reason compatibility override: finish_reason=${choice.finish_reason ?? 'none'} tool_calls=${choice.message.tool_calls.length} mapped_stop_reason=tool_use`,
+      )
+    }
   }
 
   return {
