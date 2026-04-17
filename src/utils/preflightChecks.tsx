@@ -2,8 +2,8 @@ import { c as _c } from "react/compiler-runtime";
 import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import { logEvent } from 'src/services/analytics/index.js';
+import { getOauthConfig } from 'src/constants/oauth.js';
 import { Spinner } from '../components/Spinner.js';
-import { getOauthConfig } from '../constants/oauth.js';
 import { useTimeout } from '../hooks/useTimeout.js';
 import { Box, Text } from '../ink.js';
 import { getSSLErrorHint } from '../services/api/errorUtils.js';
@@ -17,8 +17,8 @@ export interface PreflightCheckResult {
 async function checkEndpoints(): Promise<PreflightCheckResult> {
   try {
     const oauthConfig = getOauthConfig();
-    const tokenUrl = new URL(oauthConfig.TOKEN_URL);
-    const endpoints = [`${oauthConfig.BASE_API_URL}/api/hello`, `${tokenUrl.origin}/v1/oauth/hello`];
+    // OAuth functionality removed, skip token URL check
+    const endpoints = [`${oauthConfig.BASE_API_URL}/api/hello`];
     const checkEndpoint = async (url: string): Promise<PreflightCheckResult> => {
       try {
         const response = await axios.get(url, {

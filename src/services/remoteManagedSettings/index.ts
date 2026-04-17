@@ -15,7 +15,6 @@
 import axios from 'axios'
 import { createHash } from 'crypto'
 import { open, unlink } from 'fs/promises'
-import { getOauthConfig, OAUTH_BETA_HEADER } from '../../constants/oauth.js'
 import {
   checkAndRefreshOAuthTokenIfNeeded,
   getAnthropicApiKeyWithSource,
@@ -103,7 +102,7 @@ export function initializeRemoteManagedSettingsLoadingPromise(): void {
  * Uses the OAuth config base API URL
  */
 function getRemoteManagedSettingsEndpoint() {
-  return `${getOauthConfig().BASE_API_URL}/api/claude_code/settings`
+  return `${'https://api.anthropic.com'}/api/claude_code/settings`
 }
 
 /**
@@ -186,12 +185,12 @@ function getRemoteSettingsAuthHeaders(): {
   }
 
   // Fall back to OAuth tokens (for Claude.ai users)
-  const oauthTokens = getClaudeAIOAuthTokens()
+  const oauthTokens = null
   if (oauthTokens?.accessToken) {
     return {
       headers: {
         Authorization: `Bearer ${oauthTokens.accessToken}`,
-        'anthropic-beta': OAUTH_BETA_HEADER,
+        
       },
     }
   }

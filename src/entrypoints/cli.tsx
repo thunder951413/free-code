@@ -136,7 +136,8 @@ async function main(): Promise<void> {
     const {
       getClaudeAIOAuthTokens
     } = await import('../utils/auth.js');
-    if (!getClaudeAIOAuthTokens()?.accessToken) {
+    const oauthTokens = getClaudeAIOAuthTokens();
+    if (!oauthTokens?.accessToken) {
       exitWithError(BRIDGE_LOGIN_ERROR);
     }
     const disabledReason = await getBridgeDisabledReason();

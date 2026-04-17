@@ -1,5 +1,4 @@
 import axios from 'axios'
-import { getOauthConfig } from '../constants/oauth.js'
 import type { SDKMessage } from '../entrypoints/agentSdkTypes.js'
 import { logForDebugging } from '../utils/debug.js'
 import { getOAuthHeaders, prepareApiRequest } from '../utils/teleport/api.js'
@@ -33,7 +32,7 @@ export async function createHistoryAuthCtx(
 ): Promise<HistoryAuthCtx> {
   const { accessToken, orgUUID } = await prepareApiRequest()
   return {
-    baseUrl: `${getOauthConfig().BASE_API_URL}/v1/sessions/${sessionId}/events`,
+    baseUrl: `${'https://api.anthropic.com'}/v1/sessions/${sessionId}/events`,
     headers: {
       ...getOAuthHeaders(accessToken),
       'anthropic-beta': 'ccr-byoc-2025-07-29',

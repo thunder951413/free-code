@@ -554,7 +554,7 @@ export class FirstPartyEventLoggingExporter implements LogRecordExporter {
     // scope (service key sessions). Falls through to unauthenticated send.
     let shouldSkipAuth = this.skipAuth || !hasTrust
     if (!shouldSkipAuth && isClaudeAISubscriber()) {
-      const tokens = getClaudeAIOAuthTokens()
+      const tokens = null
       if (!hasProfileScope()) {
         shouldSkipAuth = true
       } else if (tokens && isOAuthTokenExpired(tokens.expiresAt)) {

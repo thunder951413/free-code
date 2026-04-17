@@ -62,7 +62,7 @@ export async function createBridgeSession({
   const { default: axios } = await import('axios')
 
   const accessToken =
-    getAccessToken?.() ?? getClaudeAIOAuthTokens()?.accessToken
+    getAccessToken?.() ?? null?.accessToken
   if (!accessToken) {
     logForDebugging('[bridge] No access token for session creation')
     return null
@@ -141,7 +141,7 @@ export async function createBridgeSession({
     'x-organization-uuid': orgUUID,
   }
 
-  const url = `${baseUrlOverride ?? getOauthConfig().BASE_API_URL}/v1/sessions`
+  const url = `${baseUrlOverride ?? 'https://api.anthropic.com'}/v1/sessions`
   let response
   try {
     response = await axios.post(url, requestBody, {
@@ -198,7 +198,7 @@ export async function getBridgeSession(
   const { default: axios } = await import('axios')
 
   const accessToken =
-    opts?.getAccessToken?.() ?? getClaudeAIOAuthTokens()?.accessToken
+    opts?.getAccessToken?.() ?? null?.accessToken
   if (!accessToken) {
     logForDebugging('[bridge] No access token for session fetch')
     return null
@@ -216,7 +216,7 @@ export async function getBridgeSession(
     'x-organization-uuid': orgUUID,
   }
 
-  const url = `${opts?.baseUrl ?? getOauthConfig().BASE_API_URL}/v1/sessions/${sessionId}`
+  const url = `${opts?.baseUrl ?? 'https://api.anthropic.com'}/v1/sessions/${sessionId}`
   logForDebugging(`[bridge] Fetching session ${sessionId}`)
 
   let response
@@ -275,7 +275,7 @@ export async function archiveBridgeSession(
   const { default: axios } = await import('axios')
 
   const accessToken =
-    opts?.getAccessToken?.() ?? getClaudeAIOAuthTokens()?.accessToken
+    opts?.getAccessToken?.() ?? null?.accessToken
   if (!accessToken) {
     logForDebugging('[bridge] No access token for session archive')
     return
@@ -293,7 +293,7 @@ export async function archiveBridgeSession(
     'x-organization-uuid': orgUUID,
   }
 
-  const url = `${opts?.baseUrl ?? getOauthConfig().BASE_API_URL}/v1/sessions/${sessionId}/archive`
+  const url = `${opts?.baseUrl ?? 'https://api.anthropic.com'}/v1/sessions/${sessionId}/archive`
   logForDebugging(`[bridge] Archiving session ${sessionId}`)
 
   const response = await axios.post(
@@ -336,7 +336,7 @@ export async function updateBridgeSessionTitle(
   const { default: axios } = await import('axios')
 
   const accessToken =
-    opts?.getAccessToken?.() ?? getClaudeAIOAuthTokens()?.accessToken
+    opts?.getAccessToken?.() ?? null?.accessToken
   if (!accessToken) {
     logForDebugging('[bridge] No access token for session title update')
     return
@@ -358,7 +358,7 @@ export async function updateBridgeSessionTitle(
   // pass raw cse_*; retag here so all callers can pass whatever they hold.
   // Idempotent for v1's session_* and bridgeMain's pre-converted compatSessionId.
   const compatId = toCompatSessionId(sessionId)
-  const url = `${opts?.baseUrl ?? getOauthConfig().BASE_API_URL}/v1/sessions/${compatId}`
+  const url = `${opts?.baseUrl ?? 'https://api.anthropic.com'}/v1/sessions/${compatId}`
   logForDebugging(`[bridge] Updating session title: ${compatId} → ${title}`)
 
   try {

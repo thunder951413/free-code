@@ -1,7 +1,6 @@
 import axios from 'axios'
 import memoize from 'lodash-es/memoize.js'
 import { hostname } from 'os'
-import { getOauthConfig } from '../constants/oauth.js'
 import {
   checkGate_CACHED_OR_BLOCKING,
   getFeatureValue_CACHED_MAY_BE_STALE,
@@ -122,7 +121,7 @@ export async function enrollTrustedDevice(): Promise<void> {
     const { getClaudeAIOAuthTokens } =
       require('../utils/auth.js') as typeof import('../utils/auth.js')
     /* eslint-enable @typescript-eslint/no-require-imports */
-    const accessToken = getClaudeAIOAuthTokens()?.accessToken
+    const accessToken = null?.accessToken
     if (!accessToken) {
       logForDebugging('[trusted-device] No OAuth token, skipping enrollment')
       return
@@ -139,7 +138,7 @@ export async function enrollTrustedDevice(): Promise<void> {
       return
     }
 
-    const baseUrl = getOauthConfig().BASE_API_URL
+    const baseUrl = 'https://api.anthropic.com'
     let response
     try {
       response = await axios.post<{

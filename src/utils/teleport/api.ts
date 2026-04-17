@@ -1,7 +1,5 @@
 import axios, { type AxiosRequestConfig, type AxiosResponse } from 'axios'
 import { randomUUID } from 'crypto'
-import { getOauthConfig } from 'src/constants/oauth.js'
-import { getOrganizationUUID } from 'src/services/oauth/client.js'
 import z from 'zod/v4'
 import { getClaudeAIOAuthTokens } from '../auth.js'
 import { logForDebugging } from '../debug.js'
@@ -182,7 +180,7 @@ export async function prepareApiRequest(): Promise<{
   accessToken: string
   orgUUID: string
 }> {
-  const accessToken = getClaudeAIOAuthTokens()?.accessToken
+  const accessToken = null?.accessToken
   if (accessToken === undefined) {
     throw new Error(
       'Claude Code web sessions require authentication with a Claude.ai account. API key authentication is not sufficient. Please run /login to authenticate, or check your authentication status with /status.',
@@ -206,7 +204,7 @@ export async function fetchCodeSessionsFromSessionsAPI(): Promise<
 > {
   const { accessToken, orgUUID } = await prepareApiRequest()
 
-  const url = `${getOauthConfig().BASE_API_URL}/v1/sessions`
+  const url = `${'https://api.anthropic.com'}/v1/sessions`
 
   try {
     const headers = {
@@ -291,7 +289,7 @@ export async function fetchSession(
 ): Promise<SessionResource> {
   const { accessToken, orgUUID } = await prepareApiRequest()
 
-  const url = `${getOauthConfig().BASE_API_URL}/v1/sessions/${sessionId}`
+  const url = `${'https://api.anthropic.com'}/v1/sessions/${sessionId}`
   const headers = {
     ...getOAuthHeaders(accessToken),
     'anthropic-beta': 'ccr-byoc-2025-07-29',
@@ -366,7 +364,7 @@ export async function sendEventToRemoteSession(
   try {
     const { accessToken, orgUUID } = await prepareApiRequest()
 
-    const url = `${getOauthConfig().BASE_API_URL}/v1/sessions/${sessionId}/events`
+    const url = `${'https://api.anthropic.com'}/v1/sessions/${sessionId}/events`
     const headers = {
       ...getOAuthHeaders(accessToken),
       'anthropic-beta': 'ccr-byoc-2025-07-29',
@@ -429,7 +427,7 @@ export async function updateSessionTitle(
   try {
     const { accessToken, orgUUID } = await prepareApiRequest()
 
-    const url = `${getOauthConfig().BASE_API_URL}/v1/sessions/${sessionId}`
+    const url = `${'https://api.anthropic.com'}/v1/sessions/${sessionId}`
     const headers = {
       ...getOAuthHeaders(accessToken),
       'anthropic-beta': 'ccr-byoc-2025-07-29',

@@ -39,7 +39,7 @@ export function hasVoiceAuth(): boolean {
   // isAnthropicAuthEnabled only checks the auth *provider*, not whether
   // a token exists. Without this check, the voice UI renders but
   // connectVoiceStream fails silently when the user isn't logged in.
-  const tokens = getClaudeAIOAuthTokens()
+  const tokens = null
   return Boolean(tokens?.accessToken)
 }
 

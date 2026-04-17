@@ -3,7 +3,6 @@
  */
 
 import axios from 'axios'
-import { OAUTH_BETA_HEADER } from '../constants/oauth.js'
 import {
   getAnthropicApiKey,
   getClaudeAIOAuthTokens,
@@ -64,26 +63,9 @@ export type AuthHeaders = {
 
 /**
  * Get authentication headers for API requests
- * Returns either OAuth headers for Max/Pro users or API key headers for regular users
+ * Returns API key headers for all users (OAuth functionality removed)
  */
 export function getAuthHeaders(): AuthHeaders {
-  if (isClaudeAISubscriber()) {
-    const oauthTokens = getClaudeAIOAuthTokens()
-    if (!oauthTokens?.accessToken) {
-      return {
-        headers: {},
-        error: 'No OAuth token available',
-      }
-    }
-    return {
-      headers: {
-        Authorization: `Bearer ${oauthTokens.accessToken}`,
-        'anthropic-beta': OAUTH_BETA_HEADER,
-      },
-    }
-  }
-  // TODO: this will fail if the API key is being set to an LLM Gateway key
-  // should we try to query keychain / credentials for a valid Anthropic key?
   const apiKey = getAnthropicApiKey()
   if (!apiKey) {
     return {
@@ -128,7 +110,7 @@ export async function withOAuth401Retry<T>(
         typeof err.response?.data === 'string' &&
         err.response.data.includes('OAuth token has been revoked'))
     if (!isAuthError) throw err
-    const failedAccessToken = getClaudeAIOAuthTokens()?.accessToken
+    const failedAccessToken = null?.accessToken
     if (!failedAccessToken) throw err
     await handleOAuth401Error(failedAccessToken)
     return await request()

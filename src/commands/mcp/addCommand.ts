@@ -9,10 +9,6 @@ import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
 } from '../../services/analytics/index.js'
-import {
-  readClientSecret,
-  saveMcpClientSecret,
-} from '../../services/mcp/auth.js'
 import { addMcpConfig } from '../../services/mcp/config.js'
 import {
   describeMcpConfigFilePath,

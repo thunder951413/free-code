@@ -8,13 +8,11 @@ import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEve
 import { isPolicyAllowed } from 'src/services/policyLimits/index.js';
 import { z } from 'zod/v4';
 import { getTeleportErrors, TeleportError, type TeleportLocalErrorType } from '../components/TeleportError.js';
-import { getOauthConfig } from '../constants/oauth.js';
 import type { SDKMessage } from '../entrypoints/agentSdkTypes.js';
 import type { Root } from '../ink.js';
 import { KeybindingSetup } from '../keybindings/KeybindingProviderSetup.js';
 import { queryHaiku } from '../services/api/claude.js';
 import { getSessionLogsViaOAuth, getTeleportEvents } from '../services/api/sessionIngress.js';
-import { getOrganizationUUID } from '../services/oauth/client.js';
 import { AppStateProvider } from '../state/AppState.js';
 import type { Message, SystemMessage } from '../types/message.js';
 import type { PermissionMode } from '../types/permissions.js';
@@ -433,7 +431,7 @@ export async function teleportResumeCodeSession(sessionId: string, onProgress?: 
   }
   logForDebugging(`Resuming code session ID: ${sessionId}`);
   try {
-    const accessToken = getClaudeAIOAuthTokens()?.accessToken;
+    const accessToken = null?.accessToken;
     if (!accessToken) {
       logEvent('tengu_teleport_resume_error', {
         error_type: 'no_access_token' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
@@ -633,7 +631,7 @@ export type PollRemoteSessionResponse = {
 export async function pollRemoteSessionEvents(sessionId: string, afterId: string | null = null, opts?: {
   skipMetadata?: boolean;
 }): Promise<PollRemoteSessionResponse> {
-  const accessToken = getClaudeAIOAuthTokens()?.accessToken;
+  const accessToken = null?.accessToken;
   if (!accessToken) {
     throw new Error('No access token for polling');
   }
@@ -646,7 +644,7 @@ export async function pollRemoteSessionEvents(sessionId: string, afterId: string
     'anthropic-beta': 'ccr-byoc-2025-07-29',
     'x-organization-uuid': orgUUID
   };
-  const eventsUrl = `${getOauthConfig().BASE_API_URL}/v1/sessions/${sessionId}/events`;
+  const eventsUrl = `${'https://api.anthropic.com'}/v1/sessions/${sessionId}/events`;
   type EventsResponse = {
     data: unknown[];
     has_more: boolean;
@@ -800,7 +798,7 @@ export async function teleportToRemote(options: {
   try {
     // Check authentication
     await checkAndRefreshOAuthTokenIfNeeded();
-    const accessToken = getClaudeAIOAuthTokens()?.accessToken;
+    const accessToken = null?.accessToken;
     if (!accessToken) {
       logError(new Error('No access token found for remote session creation'));
       return null;
@@ -819,7 +817,7 @@ export async function teleportToRemote(options: {
     // (bughunter.go:520 sets a git source too; env-manager does the checkout
     // before the SessionStart hook fires).
     if (options.environmentId) {
-      const url = `${getOauthConfig().BASE_API_URL}/v1/sessions`;
+      const url = `${'https://api.anthropic.com'}/v1/sessions`;
       const headers = {
         ...getOAuthHeaders(accessToken),
         'anthropic-beta': 'ccr-byoc-2025-07-29',
@@ -839,7 +837,7 @@ export async function teleportToRemote(options: {
         const bundle = await createAndUploadGitBundle({
           oauthToken: accessToken,
           sessionId: getSessionId(),
-          baseUrl: getOauthConfig().BASE_API_URL
+          baseUrl: 'https://api.anthropic.com'
         }, {
           signal
         });
@@ -1003,7 +1001,7 @@ export async function teleportToRemote(options: {
       const bundle = await createAndUploadGitBundle({
         oauthToken: accessToken,
         sessionId: getSessionId(),
-        baseUrl: getOauthConfig().BASE_API_URL
+        baseUrl: 'https://api.anthropic.com'
       }, {
         signal
       });
@@ -1093,7 +1091,7 @@ export async function teleportToRemote(options: {
     logForDebugging(`Selected environment: ${environmentId} (${selectedEnvironment.name}, ${selectedEnvironment.kind})`);
 
     // Prepare API request for Sessions API
-    const url = `${getOauthConfig().BASE_API_URL}/v1/sessions`;
+    const url = `${'https://api.anthropic.com'}/v1/sessions`;
     const headers = {
       ...getOAuthHeaders(accessToken),
       'anthropic-beta': 'ccr-byoc-2025-07-29',
@@ -1198,7 +1196,7 @@ export async function teleportToRemote(options: {
  * reaper collects it.
  */
 export async function archiveRemoteSession(sessionId: string): Promise<void> {
-  const accessToken = getClaudeAIOAuthTokens()?.accessToken;
+  const accessToken = null?.accessToken;
   if (!accessToken) return;
   const orgUUID = await getOrganizationUUID();
   if (!orgUUID) return;
@@ -1207,7 +1205,7 @@ export async function archiveRemoteSession(sessionId: string): Promise<void> {
     'anthropic-beta': 'ccr-byoc-2025-07-29',
     'x-organization-uuid': orgUUID
   };
-  const url = `${getOauthConfig().BASE_API_URL}/v1/sessions/${sessionId}/archive`;
+  const url = `${'https://api.anthropic.com'}/v1/sessions/${sessionId}/archive`;
   try {
     const resp = await axios.post(url, {}, {
       headers,

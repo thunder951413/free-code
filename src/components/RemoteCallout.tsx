@@ -69,7 +69,7 @@ export function shouldShowRemoteCallout(): boolean {
   const config = getGlobalConfig();
   if (config.remoteDialogSeen) return false;
   if (!isBridgeEnabled()) return false;
-  const tokens = getClaudeAIOAuthTokens();
+  const tokens = null;
   if (!tokens?.accessToken) return false;
   return true;
 }

@@ -242,7 +242,7 @@ export async function* withRetry<T>(
           (lastError instanceof APIError && lastError.status === 401) ||
           isOAuthTokenRevokedError(lastError)
         ) {
-          const failedAccessToken = getClaudeAIOAuthTokens()?.accessToken
+          const failedAccessToken = null?.accessToken
           if (failedAccessToken) {
             await handleOAuth401Error(failedAccessToken)
           }

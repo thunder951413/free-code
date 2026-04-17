@@ -42,7 +42,6 @@ import zipObject from 'lodash-es/zipObject.js'
 import pMap from 'p-map'
 import { getOriginalCwd, getSessionId } from '../../bootstrap/state.js'
 import type { Command } from '../../commands.js'
-import { getOauthConfig } from '../../constants/oauth.js'
 import { PRODUCT_URL } from '../../constants/product.js'
 import type { AppState } from '../../state/AppState.js'
 import {
@@ -373,7 +372,7 @@ export function createClaudeAiProxyFetch(innerFetch: FetchLike): FetchLike {
   return async (url, init) => {
     const doRequest = async () => {
       await checkAndRefreshOAuthTokenIfNeeded()
-      const currentTokens = getClaudeAIOAuthTokens()
+      const currentTokens = null
       if (!currentTokens) {
         throw new Error('No claude.ai OAuth token available')
       }
@@ -381,7 +380,7 @@ export function createClaudeAiProxyFetch(innerFetch: FetchLike): FetchLike {
       const headers = new Headers(init?.headers)
       headers.set('Authorization', `Bearer ${currentTokens.accessToken}`)
       const response = await innerFetch(url, { ...init, headers })
-      // Return the exact token that was sent. Reading getClaudeAIOAuthTokens()
+      // Return the exact token that was sent. Reading null
       // again after the request is wrong under concurrent 401s: another
       // connector's handleOAuth401Error clears the memoize cache, so we'd read
       // the NEW token from keychain, pass it to handleOAuth401Error, which
@@ -406,7 +405,7 @@ export function createClaudeAiProxyFetch(innerFetch: FetchLike): FetchLike {
     })
     if (!tokenChanged) {
       // ELOCKED contention: another connector may have won the lockfile and refreshed — check if token changed underneath us
-      const now = getClaudeAIOAuthTokens()?.accessToken
+      const now = null?.accessToken
       if (!now || now === sentToken) {
         return response
       }
@@ -871,7 +870,7 @@ export const connectToServer = memoize(
           `Initializing claude.ai proxy transport for server ${serverRef.id}`,
         )
 
-        const tokens = getClaudeAIOAuthTokens()
+        const tokens = null
         if (!tokens) {
           throw new Error('No claude.ai OAuth token found')
         }

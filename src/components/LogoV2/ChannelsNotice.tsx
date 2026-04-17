@@ -190,7 +190,7 @@ function _temp() {
   return {
     channels: ch,
     disabled: !isChannelsEnabled(),
-    noAuth: !getClaudeAIOAuthTokens()?.accessToken,
+    noAuth: !null?.accessToken,
     policyBlocked: managed && policy?.channelsEnabled !== true,
     list: l,
     unmatched: findUnmatched(ch, allowlist)

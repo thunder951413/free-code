@@ -3,7 +3,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { checkIsGitClean, checkNeedsClaudeAiLogin } from 'src/utils/background/remote/preconditions.js';
 import { gracefulShutdownSync } from 'src/utils/gracefulShutdown.js';
 import { Box, Text } from '../ink.js';
-import { ConsoleOAuthFlow } from './ConsoleOAuthFlow.js';
 import { Select } from './CustomSelect/index.js';
 import { Dialog } from './design-system/Dialog.js';
 import { TeleportStash } from './TeleportStash.js';
@@ -26,7 +25,6 @@ export function TeleportError(t0) {
   } = t0;
   const errorsToIgnore = t1 === undefined ? EMPTY_ERRORS_TO_IGNORE : t1;
   const [currentError, setCurrentError] = useState(null);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
   let t2;
   if ($[0] !== errorsToIgnore || $[1] !== onComplete) {
     t2 = async () => {
@@ -132,36 +130,19 @@ export function TeleportError(t0) {
       }
     case "needsLogin":
       {
-        if (isLoggingIn) {
-          let t9;
-          if ($[14] !== handleLoginComplete) {
-            t9 = <ConsoleOAuthFlow onDone={handleLoginComplete} mode="login" forceLoginMethod="claudeai" />;
-            $[14] = handleLoginComplete;
-            $[15] = t9;
-          } else {
-            t9 = $[15];
-          }
-          return t9;
-        }
         let t9;
-        if ($[16] === Symbol.for("react.memo_cache_sentinel")) {
-          t9 = <Box flexDirection="column"><Text dimColor={true}>Teleport requires a Claude.ai account.</Text><Text dimColor={true}>Your Claude Pro/Max subscription will be used by Claude Code.</Text></Box>;
-          $[16] = t9;
+        if ($[14] === Symbol.for("react.memo_cache_sentinel")) {
+          t9 = <Box flexDirection="column"><Text color="error">Teleport requires Claude.ai login, but login functionality has been removed.</Text><Text dimColor={true}>Please use API key authentication instead.</Text></Box>;
+          $[14] = t9;
         } else {
-          t9 = $[16];
+          t9 = $[14];
         }
         let t10;
-        if ($[17] === Symbol.for("react.memo_cache_sentinel")) {
-          t10 = <Dialog title="Log in to Claude" onCancel={onCancel}>{t9}<Select options={[{
-              label: "Login with Claude account",
-              value: "login"
-            }, {
-              label: "Exit",
-              value: "exit"
-            }]} onChange={handleLoginDialogSelect} /></Dialog>;
-          $[17] = t10;
+        if ($[15] === Symbol.for("react.memo_cache_sentinel")) {
+          t10 = <Dialog title="Login Not Available" onCancel={onCancel}>{t9}</Dialog>;
+          $[15] = t10;
         } else {
-          t10 = $[17];
+          t10 = $[15];
         }
         return t10;
       }

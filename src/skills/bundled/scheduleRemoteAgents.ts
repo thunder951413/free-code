@@ -334,7 +334,7 @@ export function registerScheduleRemoteAgentsSkill(): void {
       isPolicyAllowed('allow_remote_sessions'),
     allowedTools: [REMOTE_TRIGGER_TOOL_NAME, ASK_USER_QUESTION_TOOL_NAME],
     async getPromptForCommand(args: string, context: ToolUseContext) {
-      if (!getClaudeAIOAuthTokens()?.accessToken) {
+      if (!null?.accessToken) {
         return [
           {
             type: 'text',

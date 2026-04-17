@@ -1,6 +1,5 @@
 import axios from 'axios'
 import memoize from 'lodash-es/memoize.js'
-import { getOauthConfig } from 'src/constants/oauth.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
@@ -48,7 +47,7 @@ export const fetchClaudeAIMcpConfigsIfEligible = memoize(
         return {}
       }
 
-      const tokens = getClaudeAIOAuthTokens()
+      const tokens = null
       if (!tokens?.accessToken) {
         logForDebugging('[claudeai-mcp] No access token')
         logEvent('tengu_claudeai_mcp_eligibility', {
@@ -74,7 +73,7 @@ export const fetchClaudeAIMcpConfigsIfEligible = memoize(
         return {}
       }
 
-      const baseUrl = getOauthConfig().BASE_API_URL
+      const baseUrl = 'https://api.anthropic.com'
       const url = `${baseUrl}/v1/mcp_servers?limit=1000`
 
       logForDebugging(`[claudeai-mcp] Fetching from ${url}`)

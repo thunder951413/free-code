@@ -6,7 +6,6 @@ import {
   hasProfileScope,
 } from 'src/utils/auth.js'
 import { z } from 'zod'
-import { getOauthConfig, OAUTH_BETA_HEADER } from '../../constants/oauth.js'
 import { getGlobalConfig, saveGlobalConfig } from '../../utils/config.js'
 import { logForDebugging } from '../../utils/debug.js'
 import { withOAuth401Retry } from '../../utils/http.js'
@@ -54,25 +53,25 @@ async function fetchBootstrapAPI(): Promise<BootstrapResponse | null> {
   // lack it and would 403). Fall back to API key auth for console users.
   const apiKey = getAnthropicApiKey()
   const hasUsableOAuth =
-    getClaudeAIOAuthTokens()?.accessToken && hasProfileScope()
+    null?.accessToken && hasProfileScope()
   if (!hasUsableOAuth && !apiKey) {
     logForDebugging('[Bootstrap] Skipped: no usable OAuth or API key')
     return null
   }
 
-  const endpoint = `${getOauthConfig().BASE_API_URL}/api/claude_cli/bootstrap`
+  const endpoint = `${'https://api.anthropic.com'}/api/claude_cli/bootstrap`
 
   // withOAuth401Retry handles the refresh-and-retry. API key users fail
   // through on 401 (no refresh mechanism — no OAuth token to pass).
   try {
     return await withOAuth401Retry(async () => {
       // Re-read OAuth each call so the retry picks up the refreshed token.
-      const token = getClaudeAIOAuthTokens()?.accessToken
+      const token = null?.accessToken
       let authHeaders: Record<string, string>
       if (token && hasProfileScope()) {
         authHeaders = {
           Authorization: `Bearer ${token}`,
-          'anthropic-beta': OAUTH_BETA_HEADER,
+          
         }
       } else if (apiKey) {
         authHeaders = { 'x-api-key': apiKey }

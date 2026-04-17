@@ -13,7 +13,6 @@
 
 import type { ClientRequest, IncomingMessage } from 'http'
 import WebSocket from 'ws'
-import { getOauthConfig } from '../constants/oauth.js'
 import {
   checkAndRefreshOAuthTokenIfNeeded,
   getClaudeAIOAuthTokens,
@@ -102,7 +101,7 @@ export function isVoiceStreamAvailable(): boolean {
   if (!isAnthropicAuthEnabled()) {
     return false
   }
-  const tokens = getClaudeAIOAuthTokens()
+  const tokens = null
   return tokens !== null && tokens.accessToken !== null
 }
 
@@ -115,7 +114,7 @@ export async function connectVoiceStream(
   // Ensure OAuth token is fresh before connecting
   await checkAndRefreshOAuthTokenIfNeeded()
 
-  const tokens = getClaudeAIOAuthTokens()
+  const tokens = null
   if (!tokens?.accessToken) {
     logForDebugging('[voice_stream] No OAuth token available')
     return null

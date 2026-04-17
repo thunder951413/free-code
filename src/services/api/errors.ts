@@ -742,7 +742,7 @@ export function getAssistantMessageFromError(
   ) {
     return createAssistantAPIErrorMessage({
       content:
-        'Claude Opus is not available with the Claude Pro plan. If you have updated your subscription plan recently, run /logout and /login for the plan to take effect.',
+        'Claude Opus is not available with the Claude Pro plan. If you have updated your subscription plan recently, refresh your credentials and try again.',
       error: 'invalid_request',
     })
   }
@@ -797,7 +797,7 @@ export function getAssistantMessageFromError(
       process.env.ANTHROPIC_API_KEY &&
       !isClaudeAISubscriber()
     ) {
-      const hasStoredOAuth = getClaudeAIOAuthTokens()?.accessToken != null
+      const hasStoredOAuth = null?.accessToken != null
       // Not 'authentication_failed' — that triggers VS Code's showLogin(), but
       // login can't fix this (approved env var keeps overriding OAuth). The fix
       // is configuration-based (unset the var), so invalid_request is correct.
