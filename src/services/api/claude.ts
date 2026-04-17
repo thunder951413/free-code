@@ -1117,6 +1117,7 @@ async function* queryModelWithOpenAI(
   queryCheckpoint('query_api_request_sent')
 
   const start = Date.now()
+  const openAIRequestTag = randomUUID().slice(0, 8)
   let ttftMs = 0
   const newMessages: AssistantMessage[] = []
   const contentBlocks: (BetaContentBlock | ConnectorTextBlock)[] = []
@@ -1131,6 +1132,9 @@ async function* queryModelWithOpenAI(
     targetIndex?: number,
   ): Generator<AssistantMessage, void, undefined> {
     if (!partialMessage) {
+      appendVisibleLog(
+        `[OpenAI] flush skipped: req=${openAIRequestTag} reason=${reason} target_index=${targetIndex ?? 'all'} missing_partial_message=yes`,
+      )
       return
     }
 
@@ -1141,21 +1145,41 @@ async function* queryModelWithOpenAI(
 
     for (const index of indexes) {
       if (yieldedContentBlockIndexes.has(index)) {
+        appendVisibleLog(
+          `[OpenAI] flush skipped: req=${openAIRequestTag} reason=${reason} index=${index} already_yielded=yes`,
+        )
         continue
       }
       const contentBlock = contentBlocks[index]
       if (!contentBlock) {
+        appendVisibleLog(
+          `[OpenAI] flush skipped: req=${openAIRequestTag} reason=${reason} index=${index} missing_content_block=yes`,
+        )
         continue
+      }
+
+      appendVisibleLog(
+        `[OpenAI] flushing assistant content block: req=${openAIRequestTag} reason=${reason} index=${index} raw_type=${contentBlock.type}`,
+      )
+
+      let normalizedContent: BetaMessage['content']
+      try {
+        normalizedContent = normalizeContentFromAPI(
+          [contentBlock] as BetaContentBlock[],
+          tools,
+          options.agentId,
+        )
+      } catch (error) {
+        appendVisibleLog(
+          `[OpenAI] flush normalize error: req=${openAIRequestTag} reason=${reason} index=${index} raw_type=${contentBlock.type} error=${errorMessage(error)}`,
+        )
+        throw error
       }
 
       const m: AssistantMessage = {
         message: {
           ...partialMessage,
-          content: normalizeContentFromAPI(
-            [contentBlock] as BetaContentBlock[],
-            tools,
-            options.agentId,
-          ),
+          content: normalizedContent,
         },
         requestId: undefined,
         type: 'assistant',
@@ -1165,7 +1189,7 @@ async function* queryModelWithOpenAI(
       yieldedContentBlockIndexes.add(index)
       newMessages.push(m)
       appendVisibleLog(
-        `[OpenAI] flushed assistant content block: reason=${reason} index=${index} types=${m.message.content.map(block => block.type).join(',')}`,
+        `[OpenAI] flushed assistant content block: req=${openAIRequestTag} reason=${reason} index=${index} types=${m.message.content.map(block => block.type).join(',')}`,
       )
       yield m
     }
@@ -1178,12 +1202,18 @@ async function* queryModelWithOpenAI(
     for await (const part of streamGen) {
       switch (part.type) {
         case 'message_start': {
+          appendVisibleLog(
+            `[OpenAI] message_start received: req=${openAIRequestTag} message_id=${part.message.id}`,
+          )
           partialMessage = part.message
           ttftMs = Date.now() - start
           usage = updateUsage(usage, part.message?.usage)
           break
         }
         case 'content_block_start':
+          appendVisibleLog(
+            `[OpenAI] content_block_start received: req=${openAIRequestTag} index=${part.index} type=${part.content_block.type}`,
+          )
           switch (part.content_block.type) {
             case 'tool_use':
               contentBlocks[part.index] = {
@@ -1217,7 +1247,7 @@ async function* queryModelWithOpenAI(
         }
         case 'content_block_stop': {
           appendVisibleLog(
-            `[OpenAI] content_block_stop received: index=${part.index} has_block=${contentBlocks[part.index] ? 'yes' : 'no'}`,
+            `[OpenAI] content_block_stop received: req=${openAIRequestTag} index=${part.index} has_block=${contentBlocks[part.index] ? 'yes' : 'no'}`,
           )
           yield* flushPendingContentBlocks('content_block_stop', part.index)
           break

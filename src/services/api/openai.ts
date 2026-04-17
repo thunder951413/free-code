@@ -450,21 +450,22 @@ function convertMessages(
 // OpenAI → Anthropic response conversion (streaming)
 // ---------------------------------------------------------------------------
 
-let nextContentBlockIndex = 0
-let currentTextBlockIndex: number | null = null
-let messageStarted = false
-let hasOpenTextBlock = false
-const toolCallIndexMap = new Map<number, number>() // OpenAI tool call index → Anthropic content block index
+type OpenAIStreamState = {
+  nextContentBlockIndex: number
+  currentTextBlockIndex: number | null
+  messageStarted: boolean
+  hasOpenTextBlock: boolean
+  toolCallIndexMap: Map<number, number>
+}
 
-/**
- * Reset streaming state for a new request.
- */
-function resetStreamState(): void {
-  nextContentBlockIndex = 0
-  currentTextBlockIndex = null
-  messageStarted = false
-  hasOpenTextBlock = false
-  toolCallIndexMap.clear()
+function createOpenAIStreamState(): OpenAIStreamState {
+  return {
+    nextContentBlockIndex: 0,
+    currentTextBlockIndex: null,
+    messageStarted: false,
+    hasOpenTextBlock: false,
+    toolCallIndexMap: new Map<number, number>(),
+  }
 }
 
 /**
@@ -484,14 +485,15 @@ function resetStreamState(): void {
 function convertChunkToEvents(
   chunk: ChatCompletionChunk,
   model: string,
+  state: OpenAIStreamState,
 ): BetaRawMessageStreamEvent[] {
   const events: BetaRawMessageStreamEvent[] = []
   const choice = chunk.choices?.[0]
   if (!choice) return events
 
   // --- message_start ---
-  if (!messageStarted) {
-    messageStarted = true
+  if (!state.messageStarted) {
+    state.messageStarted = true
     events.push({
       type: 'message_start',
       message: {
@@ -511,19 +513,19 @@ function convertChunkToEvents(
 
   // --- text content ---
   if (delta?.content != null && delta.content !== '') {
-    if (currentTextBlockIndex === null) {
-      currentTextBlockIndex = nextContentBlockIndex++
+    if (state.currentTextBlockIndex === null) {
+      state.currentTextBlockIndex = state.nextContentBlockIndex++
       events.push({
         type: 'content_block_start',
-        index: currentTextBlockIndex,
+        index: state.currentTextBlockIndex,
         content_block: { type: 'text', text: '', citations: null } as BetaContentBlock,
       })
-      hasOpenTextBlock = true
+      state.hasOpenTextBlock = true
     }
 
     events.push({
       type: 'content_block_delta',
-      index: currentTextBlockIndex,
+      index: state.currentTextBlockIndex,
       delta: { type: 'text_delta', text: delta.content },
     })
   }
@@ -532,7 +534,7 @@ function convertChunkToEvents(
   if (delta?.tool_calls) {
     for (const tc of delta.tool_calls) {
       const tcIndex = tc.index ?? 0
-      const existingBlockIdx = toolCallIndexMap.get(tcIndex)
+      const existingBlockIdx = state.toolCallIndexMap.get(tcIndex)
 
       // Tool call start (has a name)
       if (tc.function?.name) {
@@ -556,20 +558,20 @@ function convertChunkToEvents(
           `[OpenAI] tool call start: model=${model} index=${tcIndex} id=${tc.id ?? 'generated'} name=${tc.function.name} args_chars=${tc.function.arguments?.length ?? 0}`,
         )
         // Close any open text block first
-        if (hasOpenTextBlock && currentTextBlockIndex !== null) {
+        if (state.hasOpenTextBlock && state.currentTextBlockIndex !== null) {
           events.push({
             type: 'content_block_stop',
-            index: currentTextBlockIndex,
+            index: state.currentTextBlockIndex,
           })
-          currentTextBlockIndex = null
-          hasOpenTextBlock = false
+          state.currentTextBlockIndex = null
+          state.hasOpenTextBlock = false
         }
 
-        const blockIdx = nextContentBlockIndex++
+        const blockIdx = state.nextContentBlockIndex++
         const toolCallId = tc.id || `toolu_${randomUUID().replace(/-/g, '').slice(0, 24)}`
 
         // Map OpenAI tool call index to Anthropic content block index
-        toolCallIndexMap.set(tcIndex, blockIdx)
+        state.toolCallIndexMap.set(tcIndex, blockIdx)
 
         events.push({
           type: 'content_block_start',
@@ -633,27 +635,28 @@ function choiceHasPayload(choice: ChatCompletionChunk['choices'][number] | undef
 
 function createFinishEvents(
   finishReason: NonNullable<ChatCompletionChunk['choices'][number]['finish_reason']>,
+  state: OpenAIStreamState,
 ): BetaRawMessageStreamEvent[] {
   const events: BetaRawMessageStreamEvent[] = []
-  const hadPendingToolCalls = toolCallIndexMap.size > 0
+  const hadPendingToolCalls = state.toolCallIndexMap.size > 0
 
   // Close any open text block.
-  if (hasOpenTextBlock && currentTextBlockIndex !== null) {
+  if (state.hasOpenTextBlock && state.currentTextBlockIndex !== null) {
     events.push({
       type: 'content_block_stop',
-      index: currentTextBlockIndex,
+      index: state.currentTextBlockIndex,
     })
-    currentTextBlockIndex = null
-    hasOpenTextBlock = false
+    state.currentTextBlockIndex = null
+    state.hasOpenTextBlock = false
   }
 
-  for (const blockIdx of [...toolCallIndexMap.values()].sort((a, b) => a - b)) {
+  for (const blockIdx of [...state.toolCallIndexMap.values()].sort((a, b) => a - b)) {
     events.push({
       type: 'content_block_stop',
       index: blockIdx,
     })
   }
-  toolCallIndexMap.clear()
+  state.toolCallIndexMap.clear()
 
   const stopReason: BetaStopReason =
     finishReason === 'tool_calls' || hadPendingToolCalls ? 'tool_use' : 'end_turn'
@@ -715,7 +718,7 @@ export async function* streamWithOpenAI(
     `[OpenAI] streaming request: model=${model} endpoint=${getChatCompletionsUrl(baseURL)} messages=${messages.length} tools=${tools?.length ?? 0} tool_choice=${describeToolChoice(resolvedToolChoice)} max_tokens=${params.max_tokens ?? 'default'}`,
   )
 
-  resetStreamState()
+  const streamState = createOpenAIStreamState()
   let pendingFinishReason:
     | NonNullable<ChatCompletionChunk['choices'][number]['finish_reason']>
     | undefined
@@ -739,7 +742,7 @@ export async function* streamWithOpenAI(
           `[OpenAI] streaming chunk: model=${model} finish_reason=${choice?.finish_reason ?? 'none'} tool_calls=${choice?.delta?.tool_calls?.length ?? 0}`,
         )
       }
-      const events = convertChunkToEvents(chunk, model)
+      const events = convertChunkToEvents(chunk, model, streamState)
       for (const event of events) {
         yield event
       }
@@ -752,7 +755,7 @@ export async function* streamWithOpenAI(
       emitVisibleOpenAILog(
         `[OpenAI] finalizing deferred finish_reason=${pendingFinishReason}`,
       )
-      for (const event of createFinishEvents(pendingFinishReason)) {
+      for (const event of createFinishEvents(pendingFinishReason, streamState)) {
         yield event
       }
     }
