@@ -6,6 +6,10 @@
 
 - [WEB_APP_INTEGRATION.md](file:///Users/surfing/tools/free-code/python/WEB_APP_INTEGRATION.md)
 
+如果你想直接启动一个最小网页聊天页面，请看：
+
+- [WEB_CHAT_README.md](file:///Users/surfing/tools/free-code/python/WEB_CHAT_README.md)
+
 ## 文件说明
 
 - `free_code_cli_client.py`
