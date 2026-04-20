@@ -92,7 +92,8 @@ export function normalizeCaseForComparison(path: string): string {
 }
 
 /**
- * If filePath is inside a .freecode/skills/{name}/ directory (project or global),
+ * If filePath is inside a .freecode/skill/{name}/ or .freecode/skills/{name}/
+ * directory (project or global),
  * return the skill name and a session-allow pattern scoped to just that skill.
  * Used to offer a narrower "allow edits to this skill only" option in the
  * permission dialog and SDK suggestions, so iterating on one skill doesn't
@@ -106,8 +107,16 @@ export function getClaudeSkillScope(
 
   const bases = [
     {
+      dir: expandPath(join(getOriginalCwd(), '.freecode', 'skill')),
+      prefix: '/.freecode/skill/',
+    },
+    {
       dir: expandPath(join(getOriginalCwd(), '.freecode', 'skills')),
       prefix: '/.freecode/skills/',
+    },
+    {
+      dir: expandPath(join(homedir(), '.freecode', 'skill')),
+      prefix: '~/.freecode/skill/',
     },
     {
       dir: expandPath(join(homedir(), '.freecode', 'skills')),
@@ -232,11 +241,13 @@ function isClaudeConfigFilePath(filePath: string): boolean {
   // pathInWorkingPath now handles case-insensitive comparison to prevent bypasses
   const commandsDir = join(getOriginalCwd(), '.freecode', 'commands')
   const agentsDir = join(getOriginalCwd(), '.freecode', 'agents')
+  const skillDir = join(getOriginalCwd(), '.freecode', 'skill')
   const skillsDir = join(getOriginalCwd(), '.freecode', 'skills')
 
   return (
     pathInWorkingPath(filePath, commandsDir) ||
     pathInWorkingPath(filePath, agentsDir) ||
+    pathInWorkingPath(filePath, skillDir) ||
     pathInWorkingPath(filePath, skillsDir)
   )
 }

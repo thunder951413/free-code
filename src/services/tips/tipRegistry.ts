@@ -391,7 +391,7 @@ const externalTips: Tip[] = [
   {
     id: 'custom-commands',
     content: async () =>
-      'Create skills by adding .md files to .freecode/skills/ in your project or ~/.freecode/skills/ for skills that work in any project',
+      'Create skills by adding .md files to .freecode/skill/ in your project or ~/.freecode/skills/ for skills that work in any project',
     cooldownSessions: 15,
     async isRelevant() {
       const config = getGlobalConfig()

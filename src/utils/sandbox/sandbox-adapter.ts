@@ -249,8 +249,10 @@ export function convertToSandboxRuntimeConfig(
   // .freecode/agents but not .freecode/skills. Skills have the same privilege level
   // (auto-discovered, auto-loaded, full Claude capabilities) so they need the
   // same OS-level sandbox protection.
+  denyWrite.push(resolve(originalCwd, '.freecode', 'skill'))
   denyWrite.push(resolve(originalCwd, '.freecode', 'skills'))
   if (cwd !== originalCwd) {
+    denyWrite.push(resolve(cwd, '.freecode', 'skill'))
     denyWrite.push(resolve(cwd, '.freecode', 'skills'))
   }
 

@@ -194,11 +194,9 @@ async function getWatchablePaths(): Promise<string[]> {
     }
   }
 
-  // Project skills directory (.freecode/skills)
-  const projectSkillsPath = getSkillsPath('projectSettings', 'skills')
-  if (projectSkillsPath) {
+  // Project skills directories (.freecode/skill preferred, .freecode/skills legacy)
+  for (const projectSkillsPath of ['.freecode/skill', '.freecode/skills']) {
     try {
-      // For project settings, resolve to absolute path
       const absolutePath = platformPath.resolve(projectSkillsPath)
       await fs.stat(absolutePath)
       paths.push(absolutePath)
@@ -222,12 +220,16 @@ async function getWatchablePaths(): Promise<string[]> {
 
   // Additional directories (--add-dir) skills
   for (const dir of getAdditionalDirectoriesForClaudeMd()) {
-    const additionalSkillsPath = platformPath.join(dir, '.freecode', 'skills')
-    try {
-      await fs.stat(additionalSkillsPath)
-      paths.push(additionalSkillsPath)
-    } catch {
-      // Path doesn't exist, skip it
+    for (const additionalSkillsPath of [
+      platformPath.join(dir, '.freecode', 'skill'),
+      platformPath.join(dir, '.freecode', 'skills'),
+    ]) {
+      try {
+        await fs.stat(additionalSkillsPath)
+        paths.push(additionalSkillsPath)
+      } catch {
+        // Path doesn't exist, skip it
+      }
     }
   }
 

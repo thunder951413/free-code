@@ -194,17 +194,37 @@ export async function applySkillImprovement(
   const { join } = await import('path')
   const fs = await import('fs/promises')
 
-  // Skills live at .freecode/skills/<name>/SKILL.md relative to CWD
-  const filePath = join(getCwd(), '.freecode', 'skills', skillName, 'SKILL.md')
+  // Skills live at .freecode/skill/<name>/SKILL.md relative to CWD.
+  // Keep a legacy fallback for older workspaces that still use .freecode/skills.
+  const preferredFilePath = join(
+    getCwd(),
+    '.freecode',
+    'skill',
+    skillName,
+    'SKILL.md',
+  )
+  const legacyFilePath = join(
+    getCwd(),
+    '.freecode',
+    'skills',
+    skillName,
+    'SKILL.md',
+  )
+  let filePath = preferredFilePath
 
   let currentContent: string
   try {
     currentContent = await fs.readFile(filePath, 'utf-8')
   } catch {
-    logError(
-      new Error(`Failed to read skill file for improvement: ${filePath}`),
-    )
-    return
+    try {
+      filePath = legacyFilePath
+      currentContent = await fs.readFile(filePath, 'utf-8')
+    } catch {
+      logError(
+        new Error(`Failed to read skill file for improvement: ${preferredFilePath}`),
+      )
+      return
+    }
   }
 
   const updateList = updates.map(u => `- ${u.section}: ${u.change}`).join('\n')
