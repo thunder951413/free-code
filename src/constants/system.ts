@@ -9,7 +9,7 @@ import { getWorkload } from '../utils/workloadContext.js'
 
 const DEFAULT_PREFIX = `You are Free Code.`
 const AGENT_SDK_CLAUDE_CODE_PRESET_PREFIX = `You are Free Code.`
-const AGENT_SDK_PREFIX = `You are a Claude agent.`
+const AGENT_SDK_PREFIX = `You are a Freecode agent.`
 
 const CLI_SYSPROMPT_PREFIX_VALUES = [
   DEFAULT_PREFIX,
