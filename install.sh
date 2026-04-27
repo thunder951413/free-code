@@ -33,7 +33,7 @@ header() {
 
 ART
   printf "${RESET}"
-  printf "${DIM}  The free build of Claude Code${RESET}\n"
+  printf "${DIM}  The free build of Free Code${RESET}\n"
   echo ""
 }
 

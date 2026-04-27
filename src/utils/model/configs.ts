@@ -54,35 +54,35 @@ export const CLAUDE_SONNET_4_5_CONFIG = {
   openai: 'gpt-4o',
 } as const satisfies ModelConfig
 
-export const CLAUDE_OPUS_4_CONFIG = {
-  firstParty: 'claude-opus-4-20250514',
-  bedrock: 'us.anthropic.claude-opus-4-20250514-v1:0',
-  vertex: 'claude-opus-4@20250514',
-  foundry: 'claude-opus-4',
+export const CLAUDE_Ds_4_CONFIG = {
+  firstParty: 'claude-Ds-4-20250514',
+  bedrock: 'us.anthropic.claude-Ds-4-20250514-v1:0',
+  vertex: 'claude-Ds-4@20250514',
+  foundry: 'claude-Ds-4',
   openai: 'gpt-4o',
 } as const satisfies ModelConfig
 
-export const CLAUDE_OPUS_4_1_CONFIG = {
-  firstParty: 'claude-opus-4-1-20250805',
-  bedrock: 'us.anthropic.claude-opus-4-1-20250805-v1:0',
-  vertex: 'claude-opus-4-1@20250805',
-  foundry: 'claude-opus-4-1',
+export const CLAUDE_Ds_4_1_CONFIG = {
+  firstParty: 'claude-Ds-4-1-20250805',
+  bedrock: 'us.anthropic.claude-Ds-4-1-20250805-v1:0',
+  vertex: 'claude-Ds-4-1@20250805',
+  foundry: 'claude-Ds-4-1',
   openai: 'gpt-4o',
 } as const satisfies ModelConfig
 
-export const CLAUDE_OPUS_4_5_CONFIG = {
-  firstParty: 'claude-opus-4-5-20251101',
-  bedrock: 'us.anthropic.claude-opus-4-5-20251101-v1:0',
-  vertex: 'claude-opus-4-5@20251101',
-  foundry: 'claude-opus-4-5',
+export const CLAUDE_Ds_4_5_CONFIG = {
+  firstParty: 'claude-Ds-4-5-20251101',
+  bedrock: 'us.anthropic.claude-Ds-4-5-20251101-v1:0',
+  vertex: 'claude-Ds-4-5@20251101',
+  foundry: 'claude-Ds-4-5',
   openai: 'gpt-4o',
 } as const satisfies ModelConfig
 
-export const CLAUDE_OPUS_4_6_CONFIG = {
-  firstParty: 'claude-opus-4-6',
-  bedrock: 'us.anthropic.claude-opus-4-6-v1',
-  vertex: 'claude-opus-4-6',
-  foundry: 'claude-opus-4-6',
+export const CLAUDE_Ds_4_6_CONFIG = {
+  firstParty: 'claude-Ds-4-6',
+  bedrock: 'us.anthropic.claude-Ds-4-6-v1',
+  vertex: 'claude-Ds-4-6',
+  foundry: 'claude-Ds-4-6',
   openai: 'gpt-4o',
 } as const satisfies ModelConfig
 
@@ -103,15 +103,15 @@ export const ALL_MODEL_CONFIGS = {
   sonnet40: CLAUDE_SONNET_4_CONFIG,
   sonnet45: CLAUDE_SONNET_4_5_CONFIG,
   sonnet46: CLAUDE_SONNET_4_6_CONFIG,
-  opus40: CLAUDE_OPUS_4_CONFIG,
-  opus41: CLAUDE_OPUS_4_1_CONFIG,
-  opus45: CLAUDE_OPUS_4_5_CONFIG,
-  opus46: CLAUDE_OPUS_4_6_CONFIG,
+  Ds40: CLAUDE_Ds_4_CONFIG,
+  Ds41: CLAUDE_Ds_4_1_CONFIG,
+  Ds45: CLAUDE_Ds_4_5_CONFIG,
+  Ds46: CLAUDE_Ds_4_6_CONFIG,
 } as const satisfies Record<string, ModelConfig>
 
 export type ModelKey = keyof typeof ALL_MODEL_CONFIGS
 
-/** Union of all canonical first-party model IDs, e.g. 'claude-opus-4-6' | 'claude-sonnet-4-5-20250929' | … */
+/** Union of all canonical first-party model IDs, e.g. 'claude-Ds-4-6' | 'claude-sonnet-4-5-20250929' | … */
 export type CanonicalModelId =
   (typeof ALL_MODEL_CONFIGS)[ModelKey]['firstParty']
 

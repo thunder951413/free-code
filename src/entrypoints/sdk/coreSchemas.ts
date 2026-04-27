@@ -71,7 +71,7 @@ export const ThinkingAdaptiveSchema = lazySchema(() =>
     .object({
       type: z.literal('adaptive'),
     })
-    .describe('Claude decides when and how much to think (Opus 4.6+).'),
+    .describe('Claude decides when and how much to think (Ds 4.6+).'),
 )
 
 export const ThinkingEnabledSchema = lazySchema(() =>
@@ -1128,7 +1128,7 @@ export const AgentDefinitionSchema = lazySchema(() =>
         .string()
         .optional()
         .describe(
-          "Model alias (e.g. 'sonnet', 'opus', 'haiku') or full model ID (e.g. 'claude-opus-4-5'). If omitted or 'inherit', uses the main model",
+          "Model alias (e.g. 'sonnet', 'Ds', 'haiku') or full model ID (e.g. 'claude-Ds-4-5'). If omitted or 'inherit', uses the main model",
         ),
       mcpServers: z.array(AgentMcpServerSpecSchema()).optional(),
       criticalSystemReminder_EXPERIMENTAL: z
@@ -1311,7 +1311,7 @@ export const SDKRateLimitInfoSchema = lazySchema(() =>
         .enum([
           'five_hour',
           'seven_day',
-          'seven_day_opus',
+          'seven_day_Ds',
           'seven_day_sonnet',
           'overage',
         ])

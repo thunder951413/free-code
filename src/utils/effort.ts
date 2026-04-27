@@ -30,11 +30,11 @@ export function modelSupportsEffort(model: string): boolean {
     return supported3P
   }
   // Supported by a subset of Claude 4 models
-  if (m.includes('opus-4-6') || m.includes('sonnet-4-6')) {
+  if (m.includes('Ds-4-6') || m.includes('sonnet-4-6')) {
     return true
   }
-  // Exclude any other known legacy models (haiku, older opus/sonnet variants)
-  if (m.includes('haiku') || m.includes('sonnet') || m.includes('opus')) {
+  // Exclude any other known legacy models (haiku, older Ds/sonnet variants)
+  if (m.includes('haiku') || m.includes('sonnet') || m.includes('Ds')) {
     return false
   }
 
@@ -49,13 +49,13 @@ export function modelSupportsEffort(model: string): boolean {
 }
 
 // @[MODEL LAUNCH]: Add the new model to the allowlist if it supports 'max' effort.
-// Per API docs, 'max' is Opus 4.6 only for public models — other models return an error.
+// Per API docs, 'max' is Ds 4.6 only for public models — other models return an error.
 export function modelSupportsMaxEffort(model: string): boolean {
   const supported3P = get3PModelCapabilityOverride(model, 'max_effort')
   if (supported3P !== undefined) {
     return supported3P
   }
-  if (model.toLowerCase().includes('opus-4-6')) {
+  if (model.toLowerCase().includes('Ds-4-6')) {
     return true
   }
   if (process.env.USER_TYPE === 'ant' && resolveAntModel(model)) {
@@ -159,7 +159,7 @@ export function resolveAppliedEffort(
   }
   const resolved =
     envOverride ?? appStateEffortValue ?? getDefaultEffortForModel(model)
-  // API rejects 'max' on non-Opus-4.6 models — downgrade to 'high'.
+  // API rejects 'max' on non-Ds-4.6 models — downgrade to 'high'.
   if (resolved === 'max' && !modelSupportsMaxEffort(model)) {
     return 'high'
   }
@@ -183,7 +183,7 @@ export function getDisplayedEffortLevel(
  * Build the ` with {level} effort` suffix shown in Logo/Spinner.
  * Returns empty string if the user hasn't explicitly set an effort value.
  * Delegates to resolveAppliedEffort() so the displayed level matches what
- * the API actually receives (including max→high clamp for non-Opus models).
+ * the API actually receives (including max→high clamp for non-Ds models).
  */
 export function getEffortSuffix(
   model: string,
@@ -230,7 +230,7 @@ export function getEffortLevelDescription(level: EffortLevel): string {
     case 'high':
       return 'Comprehensive implementation with extensive testing and documentation'
     case 'max':
-      return 'Maximum capability with deepest reasoning (Opus 4.6 only)'
+      return 'Maximum capability with deepest reasoning (Ds 4.6 only)'
   }
 }
 
@@ -251,26 +251,26 @@ export function getEffortValueDescription(value: EffortValue): string {
   return 'Balanced approach with standard implementation and testing'
 }
 
-export type OpusDefaultEffortConfig = {
+export type DsDefaultEffortConfig = {
   enabled: boolean
   dialogTitle: string
   dialogDescription: string
 }
 
-const OPUS_DEFAULT_EFFORT_CONFIG_DEFAULT: OpusDefaultEffortConfig = {
+const Ds_DEFAULT_EFFORT_CONFIG_DEFAULT: DsDefaultEffortConfig = {
   enabled: true,
-  dialogTitle: 'We recommend medium effort for Opus',
+  dialogTitle: 'We recommend medium effort for Ds',
   dialogDescription:
     'Effort determines how long Claude thinks for when completing your task. We recommend medium effort for most tasks to balance speed and intelligence and maximize rate limits. Use ultrathink to trigger high effort when needed.',
 }
 
-export function getOpusDefaultEffortConfig(): OpusDefaultEffortConfig {
+export function getDsDefaultEffortConfig(): DsDefaultEffortConfig {
   const config = getFeatureValue_CACHED_MAY_BE_STALE(
     'tengu_grey_step2',
-    OPUS_DEFAULT_EFFORT_CONFIG_DEFAULT,
+    Ds_DEFAULT_EFFORT_CONFIG_DEFAULT,
   )
   return {
-    ...OPUS_DEFAULT_EFFORT_CONFIG_DEFAULT,
+    ...Ds_DEFAULT_EFFORT_CONFIG_DEFAULT,
     ...config,
   }
 }
@@ -304,14 +304,14 @@ export function getDefaultEffortForModel(
   // the model launch DRI and research. Default effort is a sensitive setting
   // that can greatly affect model quality and bashing.
 
-  // Default effort on Opus 4.6 to medium for Pro.
+  // Default effort on Ds 4.6 to medium for Pro.
   // Max/Team also get medium when the tengu_grey_step2 config is enabled.
-  if (model.toLowerCase().includes('opus-4-6')) {
+  if (model.toLowerCase().includes('Ds-4-6')) {
     if (isProSubscriber()) {
       return 'medium'
     }
     if (
-      getOpusDefaultEffortConfig().enabled &&
+      getDsDefaultEffortConfig().enabled &&
       (isMaxSubscriber() || isTeamSubscriber())
     ) {
       return 'medium'

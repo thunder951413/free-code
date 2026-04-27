@@ -38,10 +38,10 @@ function getBuiltinModelStrings(provider: APIProvider): ModelStrings {
     out.sonnet40 = mainModel
     out.sonnet45 = mainModel
     out.sonnet46 = mainModel
-    out.opus40 = mainModel
-    out.opus41 = mainModel
-    out.opus45 = mainModel
-    out.opus46 = mainModel
+    out.Ds40 = mainModel
+    out.Ds41 = mainModel
+    out.Ds45 = mainModel
+    out.Ds46 = mainModel
   }
   return out
 }
@@ -59,8 +59,8 @@ async function getBedrockModelStrings(): Promise<ModelStrings> {
     return fallback
   }
   // Each config's firstParty ID is the canonical substring we search for in the
-  // user's inference profile list (e.g. "claude-opus-4-6" matches
-  // "eu.anthropic.claude-opus-4-6-v1"). Fall back to the hardcoded bedrock ID
+  // user's inference profile list (e.g. "claude-Ds-4-6" matches
+  // "eu.anthropic.claude-Ds-4-6-v1"). Fall back to the hardcoded bedrock ID
   // when no matching profile is found.
   const out = {} as ModelStrings
   for (const key of MODEL_KEYS) {
@@ -73,7 +73,7 @@ async function getBedrockModelStrings(): Promise<ModelStrings> {
 /**
  * Layer user-configured modelOverrides (from settings.json) on top of the
  * provider-derived model strings. Overrides are keyed by canonical first-party
- * model ID (e.g. "claude-opus-4-6") and map to arbitrary provider-specific
+ * model ID (e.g. "claude-Ds-4-6") and map to arbitrary provider-specific
  * strings — typically Bedrock inference profile ARNs.
  */
 function applyModelOverrides(ms: ModelStrings): ModelStrings {

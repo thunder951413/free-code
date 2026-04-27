@@ -20,7 +20,7 @@ import {
 } from '../context.js'
 import { isEnvTruthy } from '../envUtils.js'
 import { getModelStrings, resolveOverriddenModel } from './modelStrings.js'
-import { formatModelPricing, getOpus46CostTier } from '../modelCost.js'
+import { formatModelPricing, getDs46CostTier } from '../modelCost.js'
 import { getSettings_DEPRECATED } from '../settings/settings.js'
 import type { PermissionMode } from '../permissions/PermissionMode.js'
 import { getOpenAISmallFastModel } from './openai.js'
@@ -41,12 +41,12 @@ export function getSmallFastModel(): ModelName {
   return process.env.ANTHROPIC_SMALL_FAST_MODEL || getDefaultHaikuModel()
 }
 
-export function isNonCustomOpusModel(model: ModelName): boolean {
+export function isNonCustomDsModel(model: ModelName): boolean {
   return (
-    model === getModelStrings().opus40 ||
-    model === getModelStrings().opus41 ||
-    model === getModelStrings().opus45 ||
-    model === getModelStrings().opus46
+    model === getModelStrings().Ds40 ||
+    model === getModelStrings().Ds41 ||
+    model === getModelStrings().Ds45 ||
+    model === getModelStrings().Ds46
   )
 }
 
@@ -102,21 +102,21 @@ export function getMainLoopModel(): ModelName {
 }
 
 export function getBestModel(): ModelName {
-  return getDefaultOpusModel()
+  return getDefaultDsModel()
 }
 
-// @[MODEL LAUNCH]: Update the default Opus model (3P providers may lag so keep defaults unchanged).
-export function getDefaultOpusModel(): ModelName {
-  if (process.env.ANTHROPIC_DEFAULT_OPUS_MODEL) {
-    return process.env.ANTHROPIC_DEFAULT_OPUS_MODEL
+// @[MODEL LAUNCH]: Update the default Ds model (3P providers may lag so keep defaults unchanged).
+export function getDefaultDsModel(): ModelName {
+  if (process.env.ANTHROPIC_DEFAULT_Ds_MODEL) {
+    return process.env.ANTHROPIC_DEFAULT_Ds_MODEL
   }
   // 3P providers (Bedrock, Vertex, Foundry) — kept as a separate branch
   // even when values match, since 3P availability lags firstParty and
   // these will diverge again at the next model launch.
   if (getAPIProvider() !== 'firstParty') {
-    return getModelStrings().opus46
+    return getModelStrings().Ds46
   }
-  return getModelStrings().opus46
+  return getModelStrings().Ds46
 }
 
 // @[MODEL LAUNCH]: Update the default Sonnet model (3P providers may lag so keep defaults unchanged).
@@ -153,13 +153,13 @@ export function getRuntimeMainLoopModel(params: {
 }): ModelName {
   const { permissionMode, mainLoopModel, exceeds200kTokens = false } = params
 
-  // opusplan uses Opus in plan mode without [1m] suffix.
+  // Dsplan uses Ds in plan mode without [1m] suffix.
   if (
-    getUserSpecifiedModelSetting() === 'opusplan' &&
+    getUserSpecifiedModelSetting() === 'Dsplan' &&
     permissionMode === 'plan' &&
     !exceeds200kTokens
   ) {
-    return getDefaultOpusModel()
+    return getDefaultDsModel()
   }
 
   // sonnetplan by default
@@ -174,28 +174,28 @@ export function getRuntimeMainLoopModel(params: {
  * Get the default main loop model setting.
  *
  * This handles the built-in default:
- * - Opus for Max and Team Premium users
+ * - Ds for Max and Team Premium users
  * - Sonnet 4.6 for all other users (including Team Standard, Pro, Enterprise)
  *
  * @returns The default model setting to use
  */
 export function getDefaultMainLoopModelSetting(): ModelName | ModelAlias {
-  // Ants default to defaultModel from flag config, or Opus 1M if not configured
+  // Ants default to defaultModel from flag config, or Ds 1M if not configured
   if (process.env.USER_TYPE === 'ant') {
     return (
       getAntModelOverrideConfig()?.defaultModel ??
-      getDefaultOpusModel() + '[1m]'
+      getDefaultDsModel() + '[1m]'
     )
   }
 
-  // Max users get Opus as default
+  // Max users get Ds as default
   if (isMaxSubscriber()) {
-    return getDefaultOpusModel() + (isOpus1mMergeEnabled() ? '[1m]' : '')
+    return getDefaultDsModel() + (isDs1mMergeEnabled() ? '[1m]' : '')
   }
 
-  // Team Premium gets Opus (same as Max)
+  // Team Premium gets Ds (same as Max)
   if (isTeamPremiumSubscriber()) {
-    return getDefaultOpusModel() + (isOpus1mMergeEnabled() ? '[1m]' : '')
+    return getDefaultDsModel() + (isDs1mMergeEnabled() ? '[1m]' : '')
   }
 
   // PAYG (1P and 3P), Enterprise, Team Standard, and Pro get Sonnet as default
@@ -215,24 +215,24 @@ export function getDefaultMainLoopModel(): ModelName {
 /**
  * Pure string-match that strips date/provider suffixes from a first-party model
  * name. Input must already be a 1P-format ID (e.g. 'claude-3-7-sonnet-20250219',
- * 'us.anthropic.claude-opus-4-6-v1:0'). Does not touch settings, so safe at
+ * 'us.anthropic.claude-Ds-4-6-v1:0'). Does not touch settings, so safe at
  * module top-level (see MODEL_COSTS in modelCost.ts).
  */
 export function firstPartyNameToCanonical(name: ModelName): ModelShortName {
   name = name.toLowerCase()
   // Special cases for Claude 4+ models to differentiate versions
   // Order matters: check more specific versions first (4-5 before 4)
-  if (name.includes('claude-opus-4-6')) {
-    return 'claude-opus-4-6'
+  if (name.includes('claude-Ds-4-6')) {
+    return 'claude-Ds-4-6'
   }
-  if (name.includes('claude-opus-4-5')) {
-    return 'claude-opus-4-5'
+  if (name.includes('claude-Ds-4-5')) {
+    return 'claude-Ds-4-5'
   }
-  if (name.includes('claude-opus-4-1')) {
-    return 'claude-opus-4-1'
+  if (name.includes('claude-Ds-4-1')) {
+    return 'claude-Ds-4-1'
   }
-  if (name.includes('claude-opus-4')) {
-    return 'claude-opus-4'
+  if (name.includes('claude-Ds-4')) {
+    return 'claude-Ds-4'
   }
   if (name.includes('claude-sonnet-4-6')) {
     return 'claude-sonnet-4-6'
@@ -256,8 +256,8 @@ export function firstPartyNameToCanonical(name: ModelName): ModelShortName {
   if (name.includes('claude-3-5-haiku')) {
     return 'claude-3-5-haiku'
   }
-  if (name.includes('claude-3-opus')) {
-    return 'claude-3-opus'
+  if (name.includes('claude-3-Ds')) {
+    return 'claude-3-Ds'
   }
   if (name.includes('claude-3-sonnet')) {
     return 'claude-3-sonnet'
@@ -291,10 +291,10 @@ export function getClaudeAiUserDefaultModelDescription(
   fastMode = false,
 ): string {
   if (isMaxSubscriber() || isTeamPremiumSubscriber()) {
-    if (isOpus1mMergeEnabled()) {
-      return `Opus 4.6 with 1M context · Most capable for complex work${fastMode ? getOpus46PricingSuffix(true) : ''}`
+    if (isDs1mMergeEnabled()) {
+      return `Ds 4.6 with 1M context · Most capable for complex work${fastMode ? getDs46PricingSuffix(true) : ''}`
     }
-    return `Opus 4.6 · Most capable for complex work${fastMode ? getOpus46PricingSuffix(true) : ''}`
+    return `Ds 4.6 · Most capable for complex work${fastMode ? getDs46PricingSuffix(true) : ''}`
   }
   return 'Sonnet 4.6 · Best for everyday tasks'
 }
@@ -302,20 +302,20 @@ export function getClaudeAiUserDefaultModelDescription(
 export function renderDefaultModelSetting(
   setting: ModelName | ModelAlias,
 ): string {
-  if (setting === 'opusplan') {
-    return 'Opus 4.6 in plan mode, else Sonnet 4.6'
+  if (setting === 'Dsplan') {
+    return 'Ds 4.6 in plan mode, else Sonnet 4.6'
   }
   return renderModelName(parseUserSpecifiedModel(setting))
 }
 
-export function getOpus46PricingSuffix(fastMode: boolean): string {
+export function getDs46PricingSuffix(fastMode: boolean): string {
   if (getAPIProvider() !== 'firstParty') return ''
-  const pricing = formatModelPricing(getOpus46CostTier(fastMode))
+  const pricing = formatModelPricing(getDs46CostTier(fastMode))
   const fastModeIndicator = fastMode ? ` (${LIGHTNING_BOLT})` : ''
   return ` ·${fastModeIndicator} ${pricing}`
 }
 
-export function isOpus1mMergeEnabled(): boolean {
+export function isDs1mMergeEnabled(): boolean {
   if (
     is1mContextDisabled() ||
     isProSubscriber() ||
@@ -327,7 +327,7 @@ export function isOpus1mMergeEnabled(): boolean {
   // config-loading subprocess can have OAuth tokens with valid scopes but no
   // subscriptionType field (stale or partial refresh). Without this guard,
   // isProSubscriber() returns false for such users and the merge leaks
-  // opus[1m] into the model dropdown — the API then rejects it with a
+  // Ds[1m] into the model dropdown — the API then rejects it with a
   // misleading "rate limit reached" error.
   if (isClaudeAISubscriber() && getSubscriptionType() === null) {
     return false
@@ -336,8 +336,8 @@ export function isOpus1mMergeEnabled(): boolean {
 }
 
 export function renderModelSetting(setting: ModelName | ModelAlias): string {
-  if (setting === 'opusplan') {
-    return 'Opus Plan'
+  if (setting === 'Dsplan') {
+    return 'Ds Plan'
   }
   if (isModelAlias(setting)) {
     return capitalize(setting)
@@ -352,16 +352,16 @@ export function renderModelSetting(setting: ModelName | ModelAlias): string {
  */
 export function getPublicModelDisplayName(model: ModelName): string | null {
   switch (model) {
-    case getModelStrings().opus46:
-      return 'Opus 4.6'
-    case getModelStrings().opus46 + '[1m]':
-      return 'Opus 4.6 (1M context)'
-    case getModelStrings().opus45:
-      return 'Opus 4.5'
-    case getModelStrings().opus41:
-      return 'Opus 4.1'
-    case getModelStrings().opus40:
-      return 'Opus 4'
+    case getModelStrings().Ds46:
+      return 'Ds 4.6'
+    case getModelStrings().Ds46 + '[1m]':
+      return 'Ds 4.6 (1M context)'
+    case getModelStrings().Ds45:
+      return 'Ds 4.5'
+    case getModelStrings().Ds41:
+      return 'Ds 4.1'
+    case getModelStrings().Ds40:
+      return 'Ds 4'
     case getModelStrings().sonnet46 + '[1m]':
       return 'Sonnet 4.6 (1M context)'
     case getModelStrings().sonnet46:
@@ -459,31 +459,31 @@ export function parseUserSpecifiedModel(
 
   if (isModelAlias(modelString)) {
     switch (modelString) {
-      case 'opusplan':
-        return getDefaultSonnetModel() + (has1mTag ? '[1m]' : '') // Sonnet is default, Opus in plan mode
+      case 'Dsplan':
+        return getDefaultSonnetModel() + (has1mTag ? '[1m]' : '') // Sonnet is default, Ds in plan mode
       case 'sonnet':
         return getDefaultSonnetModel() + (has1mTag ? '[1m]' : '')
       case 'haiku':
         return getDefaultHaikuModel() + (has1mTag ? '[1m]' : '')
-      case 'opus':
-        return getDefaultOpusModel() + (has1mTag ? '[1m]' : '')
+      case 'Ds':
+        return getDefaultDsModel() + (has1mTag ? '[1m]' : '')
       case 'best':
         return getBestModel()
       default:
     }
   }
 
-  // Opus 4/4.1 are no longer available on the first-party API (same as
-  // Claude.ai) — silently remap to the current Opus default. The 'opus'
+  // Ds 4/4.1 are no longer available on the first-party API (same as
+  // Claude.ai) — silently remap to the current Ds default. The 'Ds'
   // alias already resolves to 4.6, so the only users on these explicit
   // strings pinned them in settings/env/--model/SDK before 4.5 launched.
   // 3P providers may not yet have 4.6 capacity, so pass through unchanged.
   if (
     getAPIProvider() === 'firstParty' &&
-    isLegacyOpusFirstParty(modelString) &&
+    isLegacyDsFirstParty(modelString) &&
     isLegacyModelRemapEnabled()
   ) {
-    return getDefaultOpusModel() + (has1mTag ? '[1m]' : '')
+    return getDefaultDsModel() + (has1mTag ? '[1m]' : '')
   }
 
   if (process.env.USER_TYPE === 'ant') {
@@ -513,13 +513,13 @@ export function parseUserSpecifiedModel(
  * Resolves a skill's `model:` frontmatter against the current model, carrying
  * the `[1m]` suffix over when the target family supports it.
  *
- * A skill author writing `model: opus` means "use opus-class reasoning" — not
- * "downgrade to 200K". If the user is on opus[1m] at 230K tokens and invokes a
- * skill with `model: opus`, passing the bare alias through drops the effective
+ * A skill author writing `model: Ds` means "use Ds-class reasoning" — not
+ * "downgrade to 200K". If the user is on Ds[1m] at 230K tokens and invokes a
+ * skill with `model: Ds`, passing the bare alias through drops the effective
  * context window from 1M to 200K, which trips autocompact at 23% apparent usage
  * and surfaces "Context limit reached" even though nothing overflowed.
  *
- * We only carry [1m] when the target actually supports it (sonnet/opus). A skill
+ * We only carry [1m] when the target actually supports it (sonnet/Ds). A skill
  * with `model: haiku` on a 1M session still downgrades — haiku has no 1M variant,
  * so the autocompact that follows is correct. Skills that already specify [1m]
  * are left untouched.
@@ -531,27 +531,27 @@ export function resolveSkillModelOverride(
   if (has1mContext(skillModel) || !has1mContext(currentModel)) {
     return skillModel
   }
-  // modelSupports1M matches on canonical IDs ('claude-opus-4-6', 'claude-sonnet-4');
-  // a bare 'opus' alias falls through getCanonicalName unmatched. Resolve first.
+  // modelSupports1M matches on canonical IDs ('claude-Ds-4-6', 'claude-sonnet-4');
+  // a bare 'Ds' alias falls through getCanonicalName unmatched. Resolve first.
   if (modelSupports1M(parseUserSpecifiedModel(skillModel))) {
     return skillModel + '[1m]'
   }
   return skillModel
 }
 
-const LEGACY_OPUS_FIRSTPARTY = [
-  'claude-opus-4-20250514',
-  'claude-opus-4-1-20250805',
-  'claude-opus-4-0',
-  'claude-opus-4-1',
+const LEGACY_Ds_FIRSTPARTY = [
+  'claude-Ds-4-20250514',
+  'claude-Ds-4-1-20250805',
+  'claude-Ds-4-0',
+  'claude-Ds-4-1',
 ]
 
-function isLegacyOpusFirstParty(model: string): boolean {
-  return LEGACY_OPUS_FIRSTPARTY.includes(model)
+function isLegacyDsFirstParty(model: string): boolean {
+  return LEGACY_Ds_FIRSTPARTY.includes(model)
 }
 
 /**
- * Opt-out for the legacy Opus 4.0/4.1 → current Opus remap.
+ * Opt-out for the legacy Ds 4.0/4.1 → current Ds remap.
  */
 export function isLegacyModelRemapEnabled(): boolean {
   return !isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_LEGACY_MODEL_REMAP)
@@ -580,17 +580,17 @@ export function getMarketingNameForModel(modelId: string): string | undefined {
   const has1m = modelId.toLowerCase().includes('[1m]')
   const canonical = getCanonicalName(modelId)
 
-  if (canonical.includes('claude-opus-4-6')) {
-    return has1m ? 'Opus 4.6 (with 1M context)' : 'Opus 4.6'
+  if (canonical.includes('claude-Ds-4-6')) {
+    return has1m ? 'Ds 4.6 (with 1M context)' : 'Ds 4.6'
   }
-  if (canonical.includes('claude-opus-4-5')) {
-    return 'Opus 4.5'
+  if (canonical.includes('claude-Ds-4-5')) {
+    return 'Ds 4.5'
   }
-  if (canonical.includes('claude-opus-4-1')) {
-    return 'Opus 4.1'
+  if (canonical.includes('claude-Ds-4-1')) {
+    return 'Ds 4.1'
   }
-  if (canonical.includes('claude-opus-4')) {
-    return 'Opus 4'
+  if (canonical.includes('claude-Ds-4')) {
+    return 'Ds 4'
   }
   if (canonical.includes('claude-sonnet-4-6')) {
     return has1m ? 'Sonnet 4.6 (with 1M context)' : 'Sonnet 4.6'

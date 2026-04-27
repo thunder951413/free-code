@@ -405,7 +405,7 @@ export async function isToolSearchEnabled(
         reason as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
       // Log the actual model being checked, not the session's main model.
       // This is important for debugging subagent tool search decisions where
-      // the subagent model (e.g., haiku) differs from the session model (e.g., opus).
+      // the subagent model (e.g., haiku) differs from the session model (e.g., Ds).
       checkedModel:
         model as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
       mcpToolCount,
@@ -419,7 +419,7 @@ export async function isToolSearchEnabled(
   if (!modelSupportsToolReference(model)) {
     logForDebugging(
       `Tool search disabled for model '${model}': model does not support tool_reference blocks. ` +
-        `This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.`,
+        `This feature is only available on Claude Sonnet 4+, Ds 4+, and newer models.`,
     )
     logModeDecision(false, 'standard', 'model_unsupported')
     return false

@@ -1,7 +1,7 @@
 /**
  * Settings Sync Service
  *
- * Syncs user settings and memory files across Claude Code environments.
+ * Syncs user settings and memory files across Free Code environments.
  *
  * - Interactive CLI: Uploads local settings to remote (incremental, only changed entries)
  * - CCR: Downloads remote settings to local before plugin installation
@@ -53,6 +53,8 @@ const MAX_FILE_SIZE_BYTES = 500 * 1024 // 500 KB per file (matches backend limit
  * Runs in background - caller should not await unless needed.
  */
 export async function uploadUserSettingsInBackground(): Promise<void> {
+  // Disabled: no settings sync upload to Anthropic
+  return
   try {
     if (
       !feature('UPLOAD_USER_SETTINGS') ||
@@ -122,11 +124,8 @@ export function _resetDownloadPromiseForTesting(): void {
  * Returns true if settings were applied, false otherwise.
  */
 export function downloadUserSettings(): Promise<boolean> {
-  if (downloadPromise) {
-    return downloadPromise
-  }
-  downloadPromise = doDownloadUserSettings()
-  return downloadPromise
+  // Disabled: no settings sync download from Anthropic
+  return Promise.resolve(false)
 }
 
 /**
@@ -145,8 +144,8 @@ export function downloadUserSettings(): Promise<boolean> {
  * settingsSync → changeDetector cycle edge.
  */
 export function redownloadUserSettings(): Promise<boolean> {
-  downloadPromise = doDownloadUserSettings(0)
-  return downloadPromise
+  // Disabled: no settings sync download from Anthropic
+  return Promise.resolve(false)
 }
 
 async function doDownloadUserSettings(

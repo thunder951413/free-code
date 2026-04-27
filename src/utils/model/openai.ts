@@ -35,7 +35,7 @@ export function getOpenAISmallFastModel(): string {
 /**
  * Map an Anthropic-style model alias or name to an OpenAI model name.
  * - Known Claude model strings → configured OPENAI_MODEL
- * - Known aliases (sonnet, opus, haiku) → configured OPENAI_MODEL
+ * - Known aliases (sonnet, Ds, haiku) → configured OPENAI_MODEL
  * - Everything else → pass through (user may set a custom model name)
  */
 export function mapModelToOpenAI(model: string): string {
@@ -46,7 +46,7 @@ export function mapModelToOpenAI(model: string): string {
     return getOpenAIModel()
   }
   // Aliases
-  if (['sonnet', 'opus', 'haiku'].includes(model)) {
+  if (['sonnet', 'Ds', 'haiku'].includes(model)) {
     return getOpenAIModel()
   }
   // Pass through custom model names

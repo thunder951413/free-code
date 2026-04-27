@@ -183,7 +183,7 @@ export async function prepareApiRequest(): Promise<{
   const accessToken = null?.accessToken
   if (accessToken === undefined) {
     throw new Error(
-      'Claude Code web sessions require authentication with a Claude.ai account. API key authentication is not sufficient. Please run /login to authenticate, or check your authentication status with /status.',
+      'Free Code web sessions require authentication with a Claude.ai account. API key authentication is not sufficient. Please run /login to authenticate, or check your authentication status with /status.',
     )
   }
 
@@ -202,6 +202,8 @@ export async function prepareApiRequest(): Promise<{
 export async function fetchCodeSessionsFromSessionsAPI(): Promise<
   CodeSession[]
 > {
+  // Disabled: no session fetch from Anthropic
+  return []
   const { accessToken, orgUUID } = await prepareApiRequest()
 
   const url = `${'https://api.anthropic.com'}/v1/sessions`
@@ -287,6 +289,8 @@ export function getOAuthHeaders(accessToken: string): Record<string, string> {
 export async function fetchSession(
   sessionId: string,
 ): Promise<SessionResource> {
+  // Disabled: no session fetch from Anthropic
+  throw new Error('Remote session fetch disabled')
   const { accessToken, orgUUID } = await prepareApiRequest()
 
   const url = `${'https://api.anthropic.com'}/v1/sessions/${sessionId}`
@@ -361,6 +365,8 @@ export async function sendEventToRemoteSession(
   messageContent: RemoteMessageContent,
   opts?: { uuid?: string },
 ): Promise<boolean> {
+  // Disabled: no event send to Anthropic remote session
+  return false
   try {
     const { accessToken, orgUUID } = await prepareApiRequest()
 
@@ -424,6 +430,8 @@ export async function updateSessionTitle(
   sessionId: string,
   title: string,
 ): Promise<boolean> {
+  // Disabled: no session title update to Anthropic
+  return false
   try {
     const { accessToken, orgUUID } = await prepareApiRequest()
 

@@ -31,6 +31,8 @@ export async function submitTranscriptShare(
   trigger: TranscriptShareTrigger,
   appearanceId: string,
 ): Promise<TranscriptShareResult> {
+  // Disabled: no transcript sharing with Anthropic
+  return { success: false }
   try {
     logForDebugging('Collecting transcript for sharing', { level: 'info' })
 

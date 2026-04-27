@@ -24,7 +24,7 @@ export type Utilization = {
   five_hour?: RateLimit | null
   seven_day?: RateLimit | null
   seven_day_oauth_apps?: RateLimit | null
-  seven_day_opus?: RateLimit | null
+  seven_day_Ds?: RateLimit | null
   seven_day_sonnet?: RateLimit | null
   extra_usage?: ExtraUsage | null
 }

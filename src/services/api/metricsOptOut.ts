@@ -51,6 +51,8 @@ async function _fetchMetricsEnabled(): Promise<MetricsEnabledResponse> {
 }
 
 async function _checkMetricsEnabledAPI(): Promise<MetricsStatus> {
+  // Disabled: no metrics opt-out check from Anthropic
+  return { enabled: false, hasError: false }
   // Incident kill switch: skip the network call when nonessential traffic is disabled.
   // Returning enabled:false sheds load at the consumer (bigqueryExporter skips
   // export). Matches the non-subscriber early-return shape below.

@@ -11,8 +11,8 @@ import type { EffortLevel } from '../../utils/effort.js';
 import { isBilledAsExtraUsage } from '../../utils/extraUsage.js';
 import { clearFastModeCooldown, isFastModeAvailable, isFastModeEnabled, isFastModeSupportedByModel } from '../../utils/fastMode.js';
 import { MODEL_ALIASES } from '../../utils/model/aliases.js';
-import { checkOpus1mAccess, checkSonnet1mAccess } from '../../utils/model/check1mAccess.js';
-import { getDefaultMainLoopModelSetting, isOpus1mMergeEnabled, renderDefaultModelSetting } from '../../utils/model/model.js';
+import { checkDs1mAccess, checkSonnet1mAccess } from '../../utils/model/check1mAccess.js';
+import { getDefaultMainLoopModelSetting, isDs1mMergeEnabled, renderDefaultModelSetting } from '../../utils/model/model.js';
 import { isModelAllowed } from '../../utils/model/modelAllowlist.js';
 import { validateModel } from '../../utils/model/validateModel.js';
 function ModelPickerWrapper(t0) {
@@ -72,7 +72,7 @@ function ModelPickerWrapper(t0) {
           }
         }
       }
-      if (isBilledAsExtraUsage(model, wasFastModeToggledOn === true, isOpus1mMergeEnabled())) {
+      if (isBilledAsExtraUsage(model, wasFastModeToggledOn === true, isDs1mMergeEnabled())) {
         message = message + " \xB7 Billed as extra usage";
       }
       if (wasFastModeToggledOn === false) {
@@ -149,8 +149,8 @@ function SetModelAndClose({
       }
 
       // @[MODEL LAUNCH]: Update check for 1M access.
-      if (model && isOpus1mUnavailable(model)) {
-        onDone(`Opus 4.6 with 1M context is not available for your account. Learn more: https://code.claude.com/docs/en/model-config#extended-context-with-1m`, {
+      if (model && isDs1mUnavailable(model)) {
+        onDone(`Ds 4.6 with 1M context is not available for your account. Learn more: https://code.claude.com/docs/en/model-config#extended-context-with-1m`, {
           display: 'system'
         });
         return;
@@ -217,7 +217,7 @@ function SetModelAndClose({
           wasFastModeToggledOn = true;
         }
       }
-      if (isBilledAsExtraUsage(modelValue, wasFastModeToggledOn === true, isOpus1mMergeEnabled())) {
+      if (isBilledAsExtraUsage(modelValue, wasFastModeToggledOn === true, isDs1mMergeEnabled())) {
         message += ` · Billed as extra usage`;
       }
       if (wasFastModeToggledOn === false) {
@@ -233,9 +233,9 @@ function SetModelAndClose({
 function isKnownAlias(model: string): boolean {
   return (MODEL_ALIASES as readonly string[]).includes(model.toLowerCase().trim());
 }
-function isOpus1mUnavailable(model: string): boolean {
+function isDs1mUnavailable(model: string): boolean {
   const m = model.toLowerCase();
-  return !checkOpus1mAccess() && !isOpus1mMergeEnabled() && m.includes('opus') && m.includes('[1m]');
+  return !checkDs1mAccess() && !isDs1mMergeEnabled() && m.includes('Ds') && m.includes('[1m]');
 }
 function isSonnet1mUnavailable(model: string): boolean {
   const m = model.toLowerCase();

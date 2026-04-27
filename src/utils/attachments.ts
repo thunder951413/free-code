@@ -76,7 +76,7 @@ import { getGlobalConfig } from './config.js'
 import {
   getDefaultSonnetModel,
   getDefaultHaikuModel,
-  getDefaultOpusModel,
+  getDefaultDsModel,
 } from './model/model.js'
 import type { ReadResourceResult } from '@modelcontextprotocol/sdk/types.js'
 import { getSkillToolCommands, getMcpSkillCommands } from '../commands.js'
@@ -3519,7 +3519,7 @@ async function getAsyncHookResponseAttachments(): Promise<Attachment[]> {
 
 /**
  * Get teammate mailbox attachments for agent swarm communication
- * Teammates are independent Claude Code sessions running in parallel (swarms),
+ * Teammates are independent Free Code sessions running in parallel (swarms),
  * not parent-child subagent relationships.
  *
  * This function checks two sources for messages:

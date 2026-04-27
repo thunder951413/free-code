@@ -93,6 +93,8 @@ export async function uploadBriefAttachment(
   size: number,
   ctx: BriefUploadContext,
 ): Promise<string | undefined> {
+  // Disabled: no brief attachment upload to Anthropic
+  return undefined
   // Positive pattern so bun:bundle eliminates the entire body from
   // non-BRIDGE_MODE builds (negative `if (!feature(...)) return` does not).
   if (feature('BRIDGE_MODE')) {

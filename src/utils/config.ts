@@ -340,14 +340,14 @@ export type GlobalConfig = {
   voiceLangHintLastLanguage?: string // Resolved STT language code when the hint was last shown — reset count when it changes
   voiceFooterHintSeenCount?: number // Number of sessions the "hold X to speak" footer hint has been shown
 
-  // Opus 1M merge notice tracking
-  opus1mMergeNoticeSeenCount?: number // Number of times the opus-1m-merge notice has been shown
+  // Ds 1M merge notice tracking
+  Ds1mMergeNoticeSeenCount?: number // Number of times the Ds-1m-merge notice has been shown
 
   // Experiment enrollment notice tracking (keyed by experiment id)
   experimentNoticesSeenCount?: Record<string, number>
 
-  // OpusPlan experiment config
-  hasShownOpusPlanWelcome?: Record<string, boolean> // Whether the OpusPlan welcome message has been shown per org
+  // DsPlan experiment config
+  hasShownDsPlanWelcome?: Record<string, boolean> // Whether the DsPlan welcome message has been shown per org
 
   // Queue usage tracking
   promptQueueUseCount: number // Number of times use has used the prompt queue
@@ -370,7 +370,7 @@ export type GlobalConfig = {
   showSpinnerTree?: boolean // Whether to show the teammate spinner tree instead of pills
 
   // First start time tracking
-  firstStartTime?: string // ISO timestamp when Claude Code was first started on this machine
+  firstStartTime?: string // ISO timestamp when Free Code was first started on this machine
 
   messageIdleNotifThresholdMs: number // How long the user has to have been idle to get a notification that Claude is done generating
 
@@ -393,15 +393,15 @@ export type GlobalConfig = {
   inputNeededNotifEnabled?: boolean
   agentPushNotifEnabled?: boolean
 
-  // Claude Code usage tracking
-  claudeCodeFirstTokenDate?: string // ISO timestamp of the user's first Claude Code OAuth token
+  // Free Code usage tracking
+  claudeCodeFirstTokenDate?: string // ISO timestamp of the user's first Free Code OAuth token
 
   // Model switch callout tracking (ant-only)
   modelSwitchCalloutDismissed?: boolean // Whether user chose "Don't show again"
   modelSwitchCalloutLastShown?: number // Timestamp of last shown (don't show for 24h)
   modelSwitchCalloutVersion?: string
 
-  // Effort callout tracking - shown once for Opus 4.6 users
+  // Effort callout tracking - shown once for Ds 4.6 users
   effortCalloutDismissed?: boolean // v1 - legacy, read to suppress v2 for Pro users who already saw it
   effortCalloutV2Dismissed?: boolean
 
@@ -424,15 +424,15 @@ export type GlobalConfig = {
   // Idle-return dialog tracking
   idleReturnDismissed?: boolean // "Don't ask again" picked
 
-  // Opus 4.5 Pro migration tracking
-  opusProMigrationComplete?: boolean
-  opusProMigrationTimestamp?: number
+  // Ds 4.5 Pro migration tracking
+  DsProMigrationComplete?: boolean
+  DsProMigrationTimestamp?: number
 
   // Sonnet 4.5 1m migration tracking
   sonnet1m45MigrationComplete?: boolean
 
-  // Opus 4.0/4.1 → current Opus migration (shows one-time notif)
-  legacyOpusMigrationTimestamp?: number
+  // Ds 4.0/4.1 → current Ds migration (shows one-time notif)
+  legacyDsMigrationTimestamp?: number
 
   // Sonnet 4.5 → 4.6 migration (pro/max/team premium)
   sonnet45To46MigrationTimestamp?: number
@@ -507,7 +507,7 @@ export type GlobalConfig = {
   lspRecommendationNeverPlugins?: string[] // Plugin IDs to never suggest
   lspRecommendationIgnoredCount?: number // Track ignored recommendations (stops after 5)
 
-  // Claude Code hint protocol state (<claude-code-hint /> tags from CLIs/SDKs).
+  // Free Code hint protocol state (<claude-code-hint /> tags from CLIs/SDKs).
   // Nested by hint type so future types (docs, mcp, ...) slot in without new
   // top-level keys.
   claudeCodeHints?: {
@@ -525,7 +525,7 @@ export type GlobalConfig = {
   // Teammate spawn mode: 'auto' | 'tmux' | 'in-process'
   teammateMode?: 'auto' | 'tmux' | 'in-process' // How to spawn teammates (default: 'auto')
   // Model for new teammates when the tool call doesn't pass one.
-  // undefined = hardcoded Opus (backward-compat); null = leader's model; string = model alias/ID.
+  // undefined = hardcoded Ds (backward-compat); null = leader's model; string = model alias/ID.
   teammateDefaultModel?: string | null
 
   // PR status footer configuration (feature-flagged via GrowthBook)

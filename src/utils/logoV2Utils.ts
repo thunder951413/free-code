@@ -258,7 +258,7 @@ export function getLogoDisplayData(): {
     : displayPath
   const billingType = isClaudeAISubscriber()
     ? getSubscriptionName()
-    : 'API Usage Billing'
+    : ''
   const agentName = getInitialSettings().agent
 
   return {

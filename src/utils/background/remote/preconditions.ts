@@ -41,6 +41,8 @@ export async function checkIsGitClean(): Promise<boolean> {
  * @returns true if user has remote environments, false otherwise
  */
 export async function checkHasRemoteEnvironment(): Promise<boolean> {
+  // Disabled: no remote environment check from Anthropic
+  return false
   try {
     const environments = await fetchEnvironments()
     return environments.length > 0
@@ -78,6 +80,8 @@ export async function checkGithubAppInstalled(
   repo: string,
   signal?: AbortSignal,
 ): Promise<boolean> {
+  // Disabled: no GitHub app check from Anthropic
+  return false
   try {
     const accessToken = null?.accessToken
     if (!accessToken) {
@@ -160,6 +164,8 @@ export async function checkGithubAppInstalled(
  * @returns true if GitHub token is synced, false otherwise
  */
 export async function checkGithubTokenSynced(): Promise<boolean> {
+  // Disabled: no GitHub token sync check from Anthropic
+  return false
   try {
     const accessToken = null?.accessToken
     if (!accessToken) {

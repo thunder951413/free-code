@@ -82,6 +82,8 @@ export function getModelCapability(model: string): ModelCapability | undefined {
 }
 
 export async function refreshModelCapabilities(): Promise<void> {
+  // Disabled: no model capabilities refresh from Anthropic
+  return
   if (!isModelCapabilitiesEligible()) return
   if (isEssentialTrafficOnly()) return
 

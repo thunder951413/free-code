@@ -20,7 +20,7 @@ import { makeSecondaryModelPrompt } from './prompt.js'
 // Custom error classes for domain blocking
 class DomainBlockedError extends Error {
   constructor(domain: string) {
-    super(`Claude Code is unable to fetch from ${domain}`)
+    super(`Free Code is unable to fetch from ${domain}`)
     this.name = 'DomainBlockedError'
   }
 }
@@ -100,7 +100,7 @@ function getTurndownService(): Promise<InstanceType<TurndownCtor>> {
 // for a data exfiltration. However, this is too restrictive for some customers'
 // legitimate use cases, such as JWT-signed URLs (e.g., cloud service signed URLs)
 // that can be much longer. We already require user approval for each domain,
-// which provides a primary security boundary. In addition, Claude Code has
+// which provides a primary security boundary. In addition, Free Code has
 // other data exfil channels, and this one does not seem relatively high risk,
 // so I'm removing that length restriction. -ab
 const MAX_URL_LENGTH = 2000
@@ -176,30 +176,8 @@ type DomainCheckResult =
 export async function checkDomainBlocklist(
   domain: string,
 ): Promise<DomainCheckResult> {
-  if (DOMAIN_CHECK_CACHE.has(domain)) {
-    return { status: 'allowed' }
-  }
-  try {
-    const response = await axios.get(
-      `https://api.anthropic.com/api/web/domain_info?domain=${encodeURIComponent(domain)}`,
-      { timeout: DOMAIN_CHECK_TIMEOUT_MS },
-    )
-    if (response.status === 200) {
-      if (response.data.can_fetch === true) {
-        DOMAIN_CHECK_CACHE.set(domain, true)
-        return { status: 'allowed' }
-      }
-      return { status: 'blocked' }
-    }
-    // Non-200 status but didn't throw
-    return {
-      status: 'check_failed',
-      error: new Error(`Domain check returned status ${response.status}`),
-    }
-  } catch (e) {
-    logError(e)
-    return { status: 'check_failed', error: e as Error }
-  }
+  // Disabled: no domain blocklist check from Anthropic - always allow
+  return { status: 'allowed' }
 }
 
 /**

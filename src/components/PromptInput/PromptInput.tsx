@@ -71,7 +71,7 @@ import type { ImageDimensions } from '../../utils/imageResizer.js';
 import { cacheImagePath, storeImage } from '../../utils/imageStore.js';
 import { isMacosOptionChar, MACOS_OPTION_SPECIAL_CHARS } from '../../utils/keyboardShortcuts.js';
 import { logError } from '../../utils/log.js';
-import { isOpus1mMergeEnabled, modelDisplayString } from '../../utils/model/model.js';
+import { isDs1mMergeEnabled, modelDisplayString } from '../../utils/model/model.js';
 import { setAutoModeActive } from '../../utils/permissions/autoModeState.js';
 import { cyclePermissionMode, getNextPermissionMode } from '../../utils/permissions/getNextPermissionMode.js';
 import { transitionPermissionMode } from '../../utils/permissions/permissionSetup.js';
@@ -761,7 +761,7 @@ function PromptInput({
     if (feature('ULTRAPLAN') && ultraplanTriggers.length) {
       addNotification({
         key: 'ultraplan-active',
-        text: 'This prompt will launch an ultraplan session in Claude Code on the web',
+        text: 'This prompt will launch an ultraplan session in Free Code on the web',
         priority: 'immediate',
         timeoutMs: 5000
       });
@@ -2036,7 +2036,7 @@ function PromptInput({
     setShowModelPicker(false);
     const effectiveFastMode = (isFastMode ?? false) && !wasFastModeDisabled;
     let message = `Model set to ${modelDisplayString(model)}`;
-    if (isBilledAsExtraUsage(model, effectiveFastMode, isOpus1mMergeEnabled())) {
+    if (isBilledAsExtraUsage(model, effectiveFastMode, isDs1mMergeEnabled())) {
       message += ' · Billed as extra usage';
     }
     if (wasFastModeDisabled) {

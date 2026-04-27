@@ -31,8 +31,8 @@ type DeprecationEntry = {
  * To add a new deprecated model, add an entry to this object.
  */
 const DEPRECATED_MODELS: Record<string, DeprecationEntry> = {
-  'claude-3-opus': {
-    modelName: 'Claude 3 Opus',
+  'claude-3-Ds': {
+    modelName: 'Claude 3 Ds',
     retirementDates: {
       firstParty: 'January 5, 2026',
       bedrock: 'January 15, 2026',

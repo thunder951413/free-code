@@ -151,7 +151,7 @@ export function Doctor(t0) {
       upperLimit: TASK_MAX_OUTPUT_UPPER_LIMIT
     }, {
       name: "CLAUDE_CODE_MAX_OUTPUT_TOKENS",
-      ...getModelMaxOutputTokens("claude-opus-4-6")
+      ...getModelMaxOutputTokens("claude-Ds-4-6")
     }];
     t4 = envVars.map(_temp8).filter(_temp9);
     $[5] = t4;
@@ -222,7 +222,7 @@ export function Doctor(t0) {
   let t7;
   if ($[11] !== onDone) {
     t7 = () => {
-      onDone("Claude Code diagnostics dismissed", {
+      onDone("Free Code diagnostics dismissed", {
         display: "system"
       });
     };

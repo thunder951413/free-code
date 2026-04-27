@@ -19,7 +19,7 @@ import { isBridgeEnabled } from '../../bridge/bridgeEnabled.js';
 import { ThemePicker } from '../ThemePicker.js';
 import { useAppState, useSetAppState, useAppStateStore } from '../../state/AppState.js';
 import { ModelPicker } from '../ModelPicker.js';
-import { modelDisplayString, isOpus1mMergeEnabled } from '../../utils/model/model.js';
+import { modelDisplayString, isDs1mMergeEnabled } from '../../utils/model/model.js';
 import { isBilledAsExtraUsage } from '../../utils/extraUsage.js';
 import { ClaudeMdExternalIncludesDialog } from '../ClaudeMdExternalIncludesDialog.js';
 import { ChannelDowngradeDialog, type ChannelDowngradeChoice } from '../ChannelDowngradeDialog.js';
@@ -212,7 +212,7 @@ export function Config({
       mainLoopModelForSession: null
     }));
     setChanges(prev_0 => {
-      const valStr = modelDisplayString(value) + (isBilledAsExtraUsage(value, false, isOpus1mMergeEnabled()) ? ' · Billed as extra usage' : '');
+      const valStr = modelDisplayString(value) + (isBilledAsExtraUsage(value, false, isDs1mMergeEnabled()) ? ' · Billed as extra usage' : '');
       if ('model' in prev_0) {
         const {
           model,
@@ -1101,7 +1101,7 @@ export function Config({
     });
     // Check for API key changes
     // On homespace, ANTHROPIC_API_KEY is preserved in process.env for child
-    // processes but ignored by Claude Code itself (see auth.ts).
+    // processes but ignored by Free Code itself (see auth.ts).
     const effectiveApiKey = isRunningOnHomespace() ? undefined : process.env.ANTHROPIC_API_KEY;
     const initialUsingCustomKey = Boolean(effectiveApiKey && initialConfig.current.customApiKeyResponses?.approved?.includes(normalizeApiKeyForConfig(effectiveApiKey)));
     const currentUsingCustomKey = Boolean(effectiveApiKey && globalConfig.customApiKeyResponses?.approved?.includes(normalizeApiKeyForConfig(effectiveApiKey)));
@@ -1488,7 +1488,7 @@ export function Config({
         setTabsHidden(false);
         // First-open-then-Enter from unset: picker highlights "Default"
         // (initial=null) and confirming would write null, silently
-        // switching Opus-fallback → follow-leader. Treat as no-op.
+        // switching Ds-fallback → follow-leader. Treat as no-op.
         if (globalConfig.teammateDefaultModel === undefined && model_1 === null) {
           return;
         }

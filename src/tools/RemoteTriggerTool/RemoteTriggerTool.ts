@@ -53,10 +53,8 @@ export const RemoteTriggerTool = buildTool({
     return outputSchema()
   },
   isEnabled() {
-    return (
-      getFeatureValue_CACHED_MAY_BE_STALE('tengu_surreal_dali', false) &&
-      isPolicyAllowed('allow_remote_sessions')
-    )
+    // Disabled: no remote trigger calls to Anthropic
+    return false
   },
   isConcurrencySafe() {
     return true

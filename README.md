@@ -2,7 +2,7 @@
 
 > This public repository is an independently published fork of [paoloanzn/free-code](https://github.com/paoloanzn/free-code) and keeps that source attribution explicit here.
 
-**The free build of Claude Code.**
+**The free build of Free Code.**
 
 All telemetry stripped. All injected security-prompt guardrails removed. All experimental features unlocked. One binary, zero callbacks home.
 
@@ -44,7 +44,7 @@ This build strips those injections. The model's own safety training still applie
 
 ### 3. Experimental features enabled
 
-Claude Code ships with dozens of feature flags gated behind `bun:bundle` compile-time switches. Most are disabled in the public npm release. This build unlocks all 45+ flags that compile cleanly, including:
+Free Code ships with dozens of feature flags gated behind `bun:bundle` compile-time switches. Most are disabled in the public npm release. This build unlocks all 45+ flags that compile cleanly, including:
 
 | Feature | What it does |
 |---|---|
@@ -280,4 +280,4 @@ If this repo gets taken down, the code lives on.
 
 ## License
 
-The original Claude Code source is the property of Anthropic. This fork exists because the source was publicly exposed through their npm distribution. Use at your own discretion.
+The original Free Code source is the property of Anthropic. This fork exists because the source was publicly exposed through their npm distribution. Use at your own discretion.

@@ -30,6 +30,8 @@ export type HistoryAuthCtx = {
 export async function createHistoryAuthCtx(
   sessionId: string,
 ): Promise<HistoryAuthCtx> {
+  // Disabled: no session history fetch from Anthropic
+  throw new Error('Session history fetch disabled')
   const { accessToken, orgUUID } = await prepareApiRequest()
   return {
     baseUrl: `${'https://api.anthropic.com'}/v1/sessions/${sessionId}/events`,

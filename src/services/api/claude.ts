@@ -84,10 +84,10 @@ import {
   stripToolReferenceBlocksFromUserMessage,
 } from '../../utils/messages.js'
 import {
-  getDefaultOpusModel,
+  getDefaultDsModel,
   getDefaultSonnetModel,
   getSmallFastModel,
-  isNonCustomOpusModel,
+  isNonCustomDsModel,
 } from '../../utils/model/model.js'
 import {
   asSystemPrompt,
@@ -347,10 +347,10 @@ export function getPromptCachingEnabled(model: string): boolean {
     if (model === defaultSonnet) return false
   }
 
-  // Check if we should disable for default Opus
-  if (isEnvTruthy(process.env.DISABLE_PROMPT_CACHING_OPUS)) {
-    const defaultOpus = getDefaultOpusModel()
-    if (model === defaultOpus) return false
+  // Check if we should disable for default Ds
+  if (isEnvTruthy(process.env.DISABLE_PROMPT_CACHING_Ds)) {
+    const defaultDs = getDefaultDsModel()
+    if (model === defaultDs) return false
   }
 
   return true
@@ -1352,11 +1352,11 @@ async function* queryModel(
   void
 > {
   // Check cheap conditions first — the off-switch await blocks on GrowthBook
-  // init (~10ms). For non-Opus models (haiku, sonnet) this skips the await
+  // init (~10ms). For non-Ds models (haiku, sonnet) this skips the await
   // entirely. Subscribers don't hit this path at all.
   if (
     !isClaudeAISubscriber() &&
-    isNonCustomOpusModel(options.model) &&
+    isNonCustomDsModel(options.model) &&
     (
       await getDynamicConfig_BLOCKS_ON_INIT<{ activated: boolean }>(
         'tengu-off-switch',
@@ -3628,7 +3628,7 @@ export async function queryHaiku({
 type QueryWithModelOptions = Omit<Options, 'getToolPermissionContext'>
 
 /**
- * Query a specific model through the Claude Code infrastructure.
+ * Query a specific model through the Free Code infrastructure.
  * This goes through the full query pipeline including proper authentication,
  * betas, and headers - unlike direct API calls.
  */
@@ -3738,7 +3738,7 @@ export function getMaxOutputTokensForModel(model: string): number {
   // = 4,911 tokens; 32k/64k defaults over-reserve 8-16× slot capacity.
   // Requests hitting the cap get one clean retry at 64k (query.ts
   // max_output_tokens_escalate). Math.min keeps models with lower native
-  // defaults (e.g. claude-3-opus at 4k) at their native value. Applied
+  // defaults (e.g. claude-3-Ds at 4k) at their native value. Applied
   // before the env-var override so CLAUDE_CODE_MAX_OUTPUT_TOKENS still wins.
   const defaultTokens = isMaxTokensCapEnabled()
     ? Math.min(maxOutputTokens.default, CAPPED_DEFAULT_MAX_TOKENS)

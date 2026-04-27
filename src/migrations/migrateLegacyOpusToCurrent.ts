@@ -11,9 +11,9 @@ import {
 } from '../utils/settings/settings.js'
 
 /**
- * Migrate first-party users off explicit Opus 4.0/4.1 model strings.
+ * Migrate first-party users off explicit Ds 4.0/4.1 model strings.
  *
- * The 'opus' alias already resolves to Opus 4.6 for 1P, so anyone still
+ * The 'opus' alias already resolves to Ds 4.6 for 1P, so anyone still
  * on an explicit 4.0/4.1 string pinned it in settings before 4.5 launched.
  * parseUserSpecifiedModel now silently remaps these at runtime anyway —
  * this migration cleans up the settings file so /model shows the right
@@ -37,10 +37,10 @@ export function migrateLegacyOpusToCurrent(): void {
 
   const model = getSettingsForSource('userSettings')?.model
   if (
-    model !== 'claude-opus-4-20250514' &&
-    model !== 'claude-opus-4-1-20250805' &&
-    model !== 'claude-opus-4-0' &&
-    model !== 'claude-opus-4-1'
+    model !== 'claude-Ds-4-20250514' &&
+    model !== 'claude-Ds-4-1-20250805' &&
+    model !== 'claude-Ds-4-0' &&
+    model !== 'claude-Ds-4-1'
   ) {
     return
   }
@@ -48,9 +48,9 @@ export function migrateLegacyOpusToCurrent(): void {
   updateSettingsForSource('userSettings', { model: 'opus' })
   saveGlobalConfig(current => ({
     ...current,
-    legacyOpusMigrationTimestamp: Date.now(),
+    legacyDsMigrationTimestamp: Date.now(),
   }))
-  logEvent('tengu_legacy_opus_migration', {
+  logEvent('tengu_legacy_Ds_migration', {
     from_model:
       model as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   })

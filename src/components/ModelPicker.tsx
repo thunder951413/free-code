@@ -265,7 +265,7 @@ export function ModelPicker(t0) {
   } else {
     t15 = $[41];
   }
-  const t16 = headerText ?? "Switch between Claude models. Applies to this session and future Claude Code sessions. For other/previous model names, specify with --model.";
+  const t16 = headerText ?? "Switch between Claude models. Applies to this session and future Free Code sessions. For other/previous model names, specify with --model.";
   let t17;
   if ($[42] !== t16) {
     t17 = <Text dimColor={true}>{t16}</Text>;
@@ -431,7 +431,7 @@ function EffortLevelIndicator(t0) {
 function cycleEffortLevel(current: EffortLevel, direction: 'left' | 'right', includeMax: boolean): EffortLevel {
   const levels: EffortLevel[] = includeMax ? ['low', 'medium', 'high', 'max'] : ['low', 'medium', 'high'];
   // If the current level isn't in the cycle (e.g. 'max' after switching to a
-  // non-Opus model), clamp to 'high'.
+  // non-Ds model), clamp to 'high'.
   const idx = levels.indexOf(current);
   const currentIndex = idx !== -1 ? idx : levels.indexOf('high');
   if (direction === 'right') {

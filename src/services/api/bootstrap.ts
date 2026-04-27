@@ -111,6 +111,8 @@ async function fetchBootstrapAPI(): Promise<BootstrapResponse | null> {
  * Fetch bootstrap data from the API and persist to disk cache.
  */
 export async function fetchBootstrapData(): Promise<void> {
+  // Disabled: no bootstrap data fetch from Anthropic
+  return
   try {
     const response = await fetchBootstrapAPI()
     if (!response) return

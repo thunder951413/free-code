@@ -355,7 +355,7 @@ const externalTips: Tip[] = [
   {
     id: 'paste-images-mac',
     content: async () =>
-      'Paste images into Claude Code using control+v (not cmd+v!)',
+      'Paste images into Free Code using control+v (not cmd+v!)',
     cooldownSessions: 10,
     isRelevant: async () => getPlatform() === 'macos',
   },
@@ -437,7 +437,7 @@ const externalTips: Tip[] = [
   {
     id: 'desktop-app',
     content: async () =>
-      'Run Claude Code locally or remotely using the Claude desktop app: clau.de/desktop',
+      'Run Free Code locally or remotely using the Claude desktop app: clau.de/desktop',
     cooldownSessions: 15,
     isRelevant: async () => getPlatform() !== 'linux',
   },
@@ -445,7 +445,7 @@ const externalTips: Tip[] = [
     id: 'desktop-shortcut',
     content: async ctx => {
       const blue = color('suggestion', ctx.theme)
-      return `Continue your session in Claude Code Desktop with ${blue('/desktop')}`
+      return `Continue your session in Free Code Desktop with ${blue('/desktop')}`
     },
     cooldownSessions: 15,
     isRelevant: async () => {
@@ -466,25 +466,25 @@ const externalTips: Tip[] = [
   {
     id: 'mobile-app',
     content: async () =>
-      '/mobile to use Claude Code from the Claude app on your phone',
+      '/mobile to use Free Code from the Claude app on your phone',
     cooldownSessions: 15,
     isRelevant: async () => true,
   },
   {
-    id: 'opusplan-mode-reminder',
+    id: 'Dsplan-mode-reminder',
     content: async () =>
-      `Your default model setting is Opus Plan Mode. Press ${getShortcutDisplay('chat:cycleMode', 'Chat', 'shift+tab')} twice to activate Plan Mode and plan with Claude Opus.`,
+      `Your default model setting is Ds Plan Mode. Press ${getShortcutDisplay('chat:cycleMode', 'Chat', 'shift+tab')} twice to activate Plan Mode and plan with Claude Ds.`,
     cooldownSessions: 2,
     async isRelevant() {
       if (process.env.USER_TYPE === 'ant') return false
       const config = getGlobalConfig()
       const modelSetting = getUserSpecifiedModelSetting()
-      const hasOpusPlanMode = modelSetting === 'opusplan'
-      // Show reminder if they have Opus Plan Mode and haven't used plan mode recently (3+ days)
+      const hasDsPlanMode = modelSetting === 'Dsplan'
+      // Show reminder if they have Ds Plan Mode and haven't used plan mode recently (3+ days)
       const daysSinceLastUse = config.lastPlanModeUse
         ? (Date.now() - config.lastPlanModeUse) / (1000 * 60 * 60 * 24)
         : Infinity
-      return hasOpusPlanMode && daysSinceLastUse > 3
+      return hasDsPlanMode && daysSinceLastUse > 3
     },
   },
   {
@@ -593,7 +593,7 @@ const externalTips: Tip[] = [
       const claude = color('claude', ctx.theme)
       const reward = getCachedReferrerReward()
       return reward
-        ? `Share Claude Code and earn ${claude(formatCreditAmount(reward))} of extra usage · ${claude('/passes')}`
+        ? `Share Free Code and earn ${claude(formatCreditAmount(reward))} of extra usage · ${claude('/passes')}`
         : `You have free guest passes to share · ${claude('/passes')}`
     },
     cooldownSessions: 3,

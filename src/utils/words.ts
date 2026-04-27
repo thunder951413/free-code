@@ -369,7 +369,7 @@ const NOUNS = [
   'moth',
   'narwhal',
   'newt',
-  'octopus',
+  'octDs',
   'otter',
   'owl',
   'panda',

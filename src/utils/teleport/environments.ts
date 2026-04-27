@@ -28,10 +28,12 @@ export type EnvironmentListResponse = {
  * @throws Error if the API request fails or no access token is available
  */
 export async function fetchEnvironments(): Promise<EnvironmentResource[]> {
+  // Disabled: no environment fetch from Anthropic
+  return []
   const accessToken = null?.accessToken
   if (!accessToken) {
     throw new Error(
-      'Claude Code web sessions require authentication with a Claude.ai account. API key authentication is not sufficient. Please run /login to authenticate, or check your authentication status with /status.',
+      'Free Code web sessions require authentication with a Claude.ai account. API key authentication is not sufficient. Please run /login to authenticate, or check your authentication status with /status.',
     )
   }
 
@@ -74,6 +76,8 @@ export async function fetchEnvironments(): Promise<EnvironmentResource[]> {
 export async function createDefaultCloudEnvironment(
   name: string,
 ): Promise<EnvironmentResource> {
+  // Disabled: no environment creation on Anthropic
+  throw new Error('Remote environment creation disabled')
   const accessToken = null?.accessToken
   if (!accessToken) {
     throw new Error('No access token available')

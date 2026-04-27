@@ -126,7 +126,7 @@ export function isRunningOnHomespace(): boolean {
 }
 
 /**
- * Conservative check for whether Claude Code is running inside a protected
+ * Conservative check for whether Free Code is running inside a protected
  * (privileged or ASL3+) COO namespace or cluster.
  *
  * Conservative means: when signals are ambiguous, assume protected. We would
@@ -153,15 +153,15 @@ export function isInProtectedNamespace(): boolean {
 /**
  * Model prefix → env var for Vertex region overrides.
  * Order matters: more specific prefixes must come before less specific ones
- * (e.g., 'claude-opus-4-1' before 'claude-opus-4').
+ * (e.g., 'claude-Ds-4-1' before 'claude-Ds-4').
  */
 const VERTEX_REGION_OVERRIDES: ReadonlyArray<[string, string]> = [
   ['claude-haiku-4-5', 'VERTEX_REGION_CLAUDE_HAIKU_4_5'],
   ['claude-3-5-haiku', 'VERTEX_REGION_CLAUDE_3_5_HAIKU'],
   ['claude-3-5-sonnet', 'VERTEX_REGION_CLAUDE_3_5_SONNET'],
   ['claude-3-7-sonnet', 'VERTEX_REGION_CLAUDE_3_7_SONNET'],
-  ['claude-opus-4-1', 'VERTEX_REGION_CLAUDE_4_1_OPUS'],
-  ['claude-opus-4', 'VERTEX_REGION_CLAUDE_4_0_OPUS'],
+  ['claude-Ds-4-1', 'VERTEX_REGION_CLAUDE_4_1_Ds'],
+  ['claude-Ds-4', 'VERTEX_REGION_CLAUDE_4_0_Ds'],
   ['claude-sonnet-4-6', 'VERTEX_REGION_CLAUDE_4_6_SONNET'],
   ['claude-sonnet-4-5', 'VERTEX_REGION_CLAUDE_4_5_SONNET'],
   ['claude-sonnet-4', 'VERTEX_REGION_CLAUDE_4_0_SONNET'],

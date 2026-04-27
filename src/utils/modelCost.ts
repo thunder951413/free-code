@@ -8,10 +8,10 @@ import {
   CLAUDE_3_5_V2_SONNET_CONFIG,
   CLAUDE_3_7_SONNET_CONFIG,
   CLAUDE_HAIKU_4_5_CONFIG,
-  CLAUDE_OPUS_4_1_CONFIG,
-  CLAUDE_OPUS_4_5_CONFIG,
-  CLAUDE_OPUS_4_6_CONFIG,
-  CLAUDE_OPUS_4_CONFIG,
+  CLAUDE_Ds_4_1_CONFIG,
+  CLAUDE_Ds_4_5_CONFIG,
+  CLAUDE_Ds_4_6_CONFIG,
+  CLAUDE_Ds_4_CONFIG,
   CLAUDE_SONNET_4_5_CONFIG,
   CLAUDE_SONNET_4_6_CONFIG,
   CLAUDE_SONNET_4_CONFIG,
@@ -41,7 +41,7 @@ export const COST_TIER_3_15 = {
   webSearchRequests: 0.01,
 } as const satisfies ModelCosts
 
-// Pricing tier for Opus 4/4.1: $15 input / $75 output per Mtok
+// Pricing tier for Ds 4/4.1: $15 input / $75 output per Mtok
 export const COST_TIER_15_75 = {
   inputTokens: 15,
   outputTokens: 75,
@@ -50,7 +50,7 @@ export const COST_TIER_15_75 = {
   webSearchRequests: 0.01,
 } as const satisfies ModelCosts
 
-// Pricing tier for Opus 4.5: $5 input / $25 output per Mtok
+// Pricing tier for Ds 4.5: $5 input / $25 output per Mtok
 export const COST_TIER_5_25 = {
   inputTokens: 5,
   outputTokens: 25,
@@ -59,7 +59,7 @@ export const COST_TIER_5_25 = {
   webSearchRequests: 0.01,
 } as const satisfies ModelCosts
 
-// Fast mode pricing for Opus 4.6: $30 input / $150 output per Mtok
+// Fast mode pricing for Ds 4.6: $30 input / $150 output per Mtok
 export const COST_TIER_30_150 = {
   inputTokens: 30,
   outputTokens: 150,
@@ -89,9 +89,9 @@ export const COST_HAIKU_45 = {
 const DEFAULT_UNKNOWN_MODEL_COST = COST_TIER_5_25
 
 /**
- * Get the cost tier for Opus 4.6 based on fast mode.
+ * Get the cost tier for Ds 4.6 based on fast mode.
  */
-export function getOpus46CostTier(fastMode: boolean): ModelCosts {
+export function getDs46CostTier(fastMode: boolean): ModelCosts {
   if (isFastModeEnabled() && fastMode) {
     return COST_TIER_30_150
   }
@@ -116,12 +116,12 @@ export const MODEL_COSTS: Record<ModelShortName, ModelCosts> = {
     COST_TIER_3_15,
   [firstPartyNameToCanonical(CLAUDE_SONNET_4_6_CONFIG.firstParty)]:
     COST_TIER_3_15,
-  [firstPartyNameToCanonical(CLAUDE_OPUS_4_CONFIG.firstParty)]: COST_TIER_15_75,
-  [firstPartyNameToCanonical(CLAUDE_OPUS_4_1_CONFIG.firstParty)]:
+  [firstPartyNameToCanonical(CLAUDE_Ds_4_CONFIG.firstParty)]: COST_TIER_15_75,
+  [firstPartyNameToCanonical(CLAUDE_Ds_4_1_CONFIG.firstParty)]:
     COST_TIER_15_75,
-  [firstPartyNameToCanonical(CLAUDE_OPUS_4_5_CONFIG.firstParty)]:
+  [firstPartyNameToCanonical(CLAUDE_Ds_4_5_CONFIG.firstParty)]:
     COST_TIER_5_25,
-  [firstPartyNameToCanonical(CLAUDE_OPUS_4_6_CONFIG.firstParty)]:
+  [firstPartyNameToCanonical(CLAUDE_Ds_4_6_CONFIG.firstParty)]:
     COST_TIER_5_25,
 }
 
@@ -144,12 +144,12 @@ function tokensToUSDCost(modelCosts: ModelCosts, usage: Usage): number {
 export function getModelCosts(model: string, usage: Usage): ModelCosts {
   const shortName = getCanonicalName(model)
 
-  // Check if this is an Opus 4.6 model with fast mode active.
+  // Check if this is an Ds 4.6 model with fast mode active.
   if (
-    shortName === firstPartyNameToCanonical(CLAUDE_OPUS_4_6_CONFIG.firstParty)
+    shortName === firstPartyNameToCanonical(CLAUDE_Ds_4_6_CONFIG.firstParty)
   ) {
     const isFastMode = usage.speed === 'fast'
-    return getOpus46CostTier(isFastMode)
+    return getDs46CostTier(isFastMode)
   }
 
   const costs = MODEL_COSTS[shortName]

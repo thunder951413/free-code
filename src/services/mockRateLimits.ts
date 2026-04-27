@@ -18,7 +18,7 @@ type MockHeaders = {
   'anthropic-ratelimit-unified-representative-claim'?:
     | 'five_hour'
     | 'seven_day'
-    | 'seven_day_opus'
+    | 'seven_day_Ds'
     | 'seven_day_sonnet'
   'anthropic-ratelimit-unified-overage-status'?:
     | 'allowed'
@@ -70,8 +70,8 @@ export type MockScenario =
   | 'org-spend-cap-hit'
   | 'member-zero-credit-limit'
   | 'seat-tier-zero-credit-limit'
-  | 'opus-limit'
-  | 'opus-warning'
+  | 'Ds-limit'
+  | 'Ds-warning'
   | 'sonnet-limit'
   | 'sonnet-warning'
   | 'fast-mode-limit'
@@ -90,7 +90,7 @@ const DEFAULT_MOCK_SUBSCRIPTION: SubscriptionType = 'max'
 
 // Track individual exceeded limits with their reset times
 type ExceededLimit = {
-  type: 'five_hour' | 'seven_day' | 'seven_day_opus' | 'seven_day_sonnet'
+  type: 'five_hour' | 'seven_day' | 'seven_day_Ds' | 'seven_day_sonnet'
   resetsAt: number // Unix timestamp
 }
 
@@ -137,7 +137,7 @@ export function setMockHeader(
       const validClaims = [
         'five_hour',
         'seven_day',
-        'seven_day_opus',
+        'seven_day_Ds',
         'seven_day_sonnet',
       ]
       if (validClaims.includes(value)) {
@@ -147,7 +147,7 @@ export function setMockHeader(
           resetsAt = Math.floor(Date.now() / 1000) + 5 * 3600
         } else if (
           value === 'seven_day' ||
-          value === 'seven_day_opus' ||
+          value === 'seven_day_Ds' ||
           value === 'seven_day_sonnet'
         ) {
           resetsAt = Math.floor(Date.now() / 1000) + 7 * 24 * 3600
@@ -247,7 +247,7 @@ function updateRepresentativeClaim(): void {
 
 // Add function to add exceeded limit with custom reset time
 export function addExceededLimit(
-  type: 'five_hour' | 'seven_day' | 'seven_day_opus' | 'seven_day_sonnet',
+  type: 'five_hour' | 'seven_day' | 'seven_day_Ds' | 'seven_day_sonnet',
   hoursFromNow: number,
 ): void {
   if (process.env.USER_TYPE !== 'ant') {
@@ -535,8 +535,8 @@ export function setMockRateLimitScenario(scenario: MockScenario): void {
       break
     }
 
-    case 'opus-limit': {
-      exceededLimits = [{ type: 'seven_day_opus', resetsAt: sevenDaysFromNow }]
+    case 'Ds-limit': {
+      exceededLimits = [{ type: 'seven_day_Ds', resetsAt: sevenDaysFromNow }]
       updateRepresentativeClaim()
       // Always send 429 rejected status - the error handler will decide whether
       // to show an error or return NO_RESPONSE_REQUESTED based on fallback eligibility
@@ -544,11 +544,11 @@ export function setMockRateLimitScenario(scenario: MockScenario): void {
       break
     }
 
-    case 'opus-warning': {
+    case 'Ds-warning': {
       mockHeaders = {
         'anthropic-ratelimit-unified-status': 'allowed_warning',
         'anthropic-ratelimit-unified-reset': String(sevenDaysFromNow),
-        'anthropic-ratelimit-unified-representative-claim': 'seven_day_opus',
+        'anthropic-ratelimit-unified-representative-claim': 'seven_day_Ds',
       }
       break
     }
@@ -729,8 +729,8 @@ export function getCurrentMockScenario(): MockScenario | null {
   const overage = mockHeaders['anthropic-ratelimit-unified-overage-status']
   const claim = mockHeaders['anthropic-ratelimit-unified-representative-claim']
 
-  if (claim === 'seven_day_opus') {
-    return status === 'rejected' ? 'opus-limit' : 'opus-warning'
+  if (claim === 'seven_day_Ds') {
+    return status === 'rejected' ? 'Ds-limit' : 'Ds-warning'
   }
 
   if (claim === 'seven_day_sonnet') {
@@ -781,10 +781,10 @@ export function getScenarioDescription(scenario: MockScenario): string {
       return 'Member limit is zero (admin can allocate more)'
     case 'seat-tier-zero-credit-limit':
       return 'Seat tier limit is zero (admin can allocate more)'
-    case 'opus-limit':
-      return 'Opus limit reached'
-    case 'opus-warning':
-      return 'Approaching Opus limit'
+    case 'Ds-limit':
+      return 'Ds limit reached'
+    case 'Ds-warning':
+      return 'Approaching Ds limit'
     case 'sonnet-limit':
       return 'Sonnet limit reached'
     case 'sonnet-warning':

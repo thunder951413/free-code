@@ -181,8 +181,8 @@ function getLimitReachedText(limits: ClaudeAILimits, model: string): string {
     return formatLimitReachedText(limit, resetMessage, model)
   }
 
-  if (limits.rateLimitType === 'seven_day_opus') {
-    return formatLimitReachedText('Opus limit', resetMessage, model)
+  if (limits.rateLimitType === 'seven_day_Ds') {
+    return formatLimitReachedText('Ds limit', resetMessage, model)
   }
 
   if (limits.rateLimitType === 'seven_day') {
@@ -205,8 +205,8 @@ function getEarlyWarningText(limits: ClaudeAILimits): string | null {
     case 'five_hour':
       limitName = 'session limit'
       break
-    case 'seven_day_opus':
-      limitName = 'Opus limit'
+    case 'seven_day_Ds':
+      limitName = 'Ds limit'
       break
     case 'seven_day_sonnet':
       limitName = 'Sonnet limit'
@@ -279,7 +279,7 @@ function getWarningUpsellText(
 
     // Pro/Max users: prompt to upgrade
     if (subscriptionType === 'pro' || subscriptionType === 'max') {
-      return '/upgrade to keep using Claude Code'
+      return '/upgrade to keep using Free Code'
     }
   }
 
@@ -310,8 +310,8 @@ export function getUsingOverageText(limits: ClaudeAILimits): string {
     limitName = 'session limit'
   } else if (limits.rateLimitType === 'seven_day') {
     limitName = 'weekly limit'
-  } else if (limits.rateLimitType === 'seven_day_opus') {
-    limitName = 'Opus limit'
+  } else if (limits.rateLimitType === 'seven_day_Ds') {
+    limitName = 'Ds limit'
   } else if (limits.rateLimitType === 'seven_day_sonnet') {
     const subscriptionType = getSubscriptionType()
     const isProOrEnterprise =

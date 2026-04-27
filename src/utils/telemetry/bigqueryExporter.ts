@@ -64,6 +64,9 @@ export class BigQueryMetricsExporter implements PushMetricExporter {
     metrics: ResourceMetrics,
     resultCallback: (result: ExportResult) => void,
   ): Promise<void> {
+    // Disabled: no metrics export to Anthropic
+    resultCallback({ code: ExportResultCode.SUCCESS })
+    return
     if (this.isShutdown) {
       resultCallback({
         code: ExportResultCode.FAILED,

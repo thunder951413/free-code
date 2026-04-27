@@ -133,7 +133,7 @@ export const isInternalModelRepo = sequential(async (): Promise<boolean> => {
  * Converts internal model variants to their public equivalents.
  */
 export function sanitizeSurfaceKey(surfaceKey: string): string {
-  // Split surface key into surface and model parts (e.g., "cli/opus-4-5-fast" -> ["cli", "opus-4-5-fast"])
+  // Split surface key into surface and model parts (e.g., "cli/Ds-4-5-fast" -> ["cli", "Ds-4-5-fast"])
   const slashIndex = surfaceKey.lastIndexOf('/')
   if (slashIndex === -1) {
     return surfaceKey
@@ -153,10 +153,10 @@ export function sanitizeSurfaceKey(surfaceKey: string): string {
  */
 export function sanitizeModelName(shortName: string): string {
   // Map internal variants to public equivalents based on model family
-  if (shortName.includes('opus-4-6')) return 'claude-opus-4-6'
-  if (shortName.includes('opus-4-5')) return 'claude-opus-4-5'
-  if (shortName.includes('opus-4-1')) return 'claude-opus-4-1'
-  if (shortName.includes('opus-4')) return 'claude-opus-4'
+  if (shortName.includes('Ds-4-6')) return 'claude-Ds-4-6'
+  if (shortName.includes('Ds-4-5')) return 'claude-Ds-4-5'
+  if (shortName.includes('Ds-4-1')) return 'claude-Ds-4-1'
+  if (shortName.includes('Ds-4')) return 'claude-Ds-4'
   if (shortName.includes('sonnet-4-6')) return 'claude-sonnet-4-6'
   if (shortName.includes('sonnet-4-5')) return 'claude-sonnet-4-5'
   if (shortName.includes('sonnet-4')) return 'claude-sonnet-4'

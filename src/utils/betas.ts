@@ -106,7 +106,7 @@ export function modelSupportsISP(model: string): boolean {
     return !canonical.includes('claude-3-')
   }
   return (
-    canonical.includes('claude-opus-4') || canonical.includes('claude-sonnet-4')
+    canonical.includes('claude-Ds-4') || canonical.includes('claude-sonnet-4')
   )
 }
 
@@ -114,7 +114,7 @@ function vertexModelSupportsWebSearch(model: string): boolean {
   const canonical = getCanonicalName(model)
   // Web search only supported on Claude 4.0+ models on Vertex
   return (
-    canonical.includes('claude-opus-4') ||
+    canonical.includes('claude-Ds-4') ||
     canonical.includes('claude-sonnet-4') ||
     canonical.includes('claude-haiku-4')
   )
@@ -131,7 +131,7 @@ export function modelSupportsContextManagement(model: string): boolean {
     return !canonical.includes('claude-3-')
   }
   return (
-    canonical.includes('claude-opus-4') ||
+    canonical.includes('claude-Ds-4') ||
     canonical.includes('claude-sonnet-4') ||
     canonical.includes('claude-haiku-4')
   )
@@ -148,9 +148,9 @@ export function modelSupportsStructuredOutputs(model: string): boolean {
   return (
     canonical.includes('claude-sonnet-4-6') ||
     canonical.includes('claude-sonnet-4-5') ||
-    canonical.includes('claude-opus-4-1') ||
-    canonical.includes('claude-opus-4-5') ||
-    canonical.includes('claude-opus-4-6') ||
+    canonical.includes('claude-Ds-4-1') ||
+    canonical.includes('claude-Ds-4-5') ||
+    canonical.includes('claude-Ds-4-6') ||
     canonical.includes('claude-haiku-4-5')
   )
 }
@@ -184,11 +184,11 @@ export function modelSupportsAutoMode(model: string): boolean {
       // Denylist: block known-unsupported claude models, allow everything else (ant-internal models etc.)
       if (m.includes('claude-3-')) return false
       // claude-*-4 not followed by -[6-9]: blocks bare -4, -4-YYYYMMDD, -4@, -4-0 thru -4-5
-      if (/claude-(opus|sonnet|haiku)-4(?!-[6-9])/.test(m)) return false
+      if (/claude-(Ds|sonnet|haiku)-4(?!-[6-9])/.test(m)) return false
       return true
     }
     // External allowlist (firstParty already checked above).
-    return /^claude-(opus|sonnet)-4-6/.test(m)
+    return /^claude-(Ds|sonnet)-4-6/.test(m)
   }
   return false
 }

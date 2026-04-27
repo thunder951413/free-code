@@ -21,7 +21,7 @@ import { logForDebugging } from './debug.js'
 import { isEnvTruthy } from './envUtils.js'
 import {
   getDefaultMainLoopModelSetting,
-  isOpus1mMergeEnabled,
+  isDs1mMergeEnabled,
   type ModelSetting,
   parseUserSpecifiedModel,
 } from './model/model.js'
@@ -139,10 +139,10 @@ export function getFastModeUnavailableReason(): string | null {
 }
 
 // @[MODEL LAUNCH]: Update supported Fast Mode models.
-export const FAST_MODE_MODEL_DISPLAY = 'Opus 4.6'
+export const FAST_MODE_MODEL_DISPLAY = 'Ds 4.6'
 
 export function getFastModeModel(): string {
-  return 'opus' + (isOpus1mMergeEnabled() ? '[1m]' : '')
+  return 'Ds' + (isDs1mMergeEnabled() ? '[1m]' : '')
 }
 
 export function getInitialFastModeSetting(model: ModelSetting): boolean {
@@ -171,7 +171,7 @@ export function isFastModeSupportedByModel(
   }
   const model = modelSetting ?? getDefaultMainLoopModelSetting()
   const parsedModel = parseUserSpecifiedModel(model)
-  return parsedModel.toLowerCase().includes('opus-4-6')
+  return parsedModel.toLowerCase().includes('Ds-4-6')
 }
 
 // --- Fast mode runtime state ---
@@ -398,6 +398,8 @@ export function resolveFastModeStatusFromCache(): void {
 }
 
 export async function prefetchFastModeStatus(): Promise<void> {
+  // Disabled: no fast mode status fetch from Anthropic
+  return
   // Skip network requests if nonessential traffic is disabled
   if (isEssentialTrafficOnly()) {
     return

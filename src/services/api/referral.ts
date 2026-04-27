@@ -271,10 +271,5 @@ export async function getCachedOrFetchPassesEligibility(): Promise<ReferralEligi
  * Prefetch passes eligibility on startup
  */
 export async function prefetchPassesEligibility(): Promise<void> {
-  // Skip network requests if nonessential traffic is disabled
-  if (isEssentialTrafficOnly()) {
-    return
-  }
-
-  void getCachedOrFetchPassesEligibility()
+  // Disabled: no referral eligibility fetch from Anthropic
 }

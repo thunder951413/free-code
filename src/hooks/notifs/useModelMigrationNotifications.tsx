@@ -18,15 +18,15 @@ c => {
     timeoutMs: 3000
   };
 },
-// Opus Pro → default, or pinned 4.0/4.1 → opus alias. Both land on the
-// current Opus default (4.6 for 1P).
+// Ds Pro → default, or pinned 4.0/4.1 → Ds alias. Both land on the
+// current Ds default (4.6 for 1P).
 c => {
-  const isLegacyRemap = Boolean(c.legacyOpusMigrationTimestamp);
-  const ts = c.legacyOpusMigrationTimestamp ?? c.opusProMigrationTimestamp;
+  const isLegacyRemap = Boolean(c.legacyDsMigrationTimestamp);
+  const ts = c.legacyDsMigrationTimestamp ?? c.DsProMigrationTimestamp;
   if (!recent(ts)) return;
   return {
-    key: 'opus-pro-update',
-    text: isLegacyRemap ? 'Model updated to Opus 4.6 · Set CLAUDE_CODE_DISABLE_LEGACY_MODEL_REMAP=1 to opt out' : 'Model updated to Opus 4.6',
+    key: 'Ds-pro-update',
+    text: isLegacyRemap ? 'Model updated to Ds 4.6 · Set CLAUDE_CODE_DISABLE_LEGACY_MODEL_REMAP=1 to opt out' : 'Model updated to Ds 4.6',
     color: 'suggestion',
     priority: 'high',
     timeoutMs: isLegacyRemap ? 8000 : 3000

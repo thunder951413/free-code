@@ -2,7 +2,7 @@
  * Files API client for managing files
  *
  * This module provides functionality to download and upload files to Anthropic Public Files API.
- * Used by the Claude Code agent to download file attachments at session startup.
+ * Used by the Free Code agent to download file attachments at session startup.
  *
  * API Reference: https://docs.anthropic.com/en/api/files-content
  */
@@ -319,6 +319,8 @@ export async function downloadSessionFiles(
   config: FilesApiConfig,
   concurrency: number = DEFAULT_CONCURRENCY,
 ): Promise<DownloadResult[]> {
+  // Disabled: no file downloads from Anthropic
+  return []
   if (files.length === 0) {
     return []
   }
@@ -381,6 +383,8 @@ export async function uploadFile(
   config: FilesApiConfig,
   opts?: { signal?: AbortSignal },
 ): Promise<UploadResult> {
+  // Disabled: no file uploads to Anthropic
+  return { path: relativePath, success: false, error: 'File uploads disabled' }
   const baseUrl = config.baseUrl || getDefaultApiBaseUrl()
   const url = `${baseUrl}/v1/files`
 
@@ -618,6 +622,8 @@ export async function listFilesCreatedAfter(
   afterCreatedAt: string,
   config: FilesApiConfig,
 ): Promise<FileMetadata[]> {
+  // Disabled: no file listing from Anthropic
+  return []
   const baseUrl = config.baseUrl || getDefaultApiBaseUrl()
   const headers = {
     Authorization: `Bearer ${config.oauthToken}`,

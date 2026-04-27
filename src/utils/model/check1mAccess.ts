@@ -43,7 +43,7 @@ function isExtraUsageEnabled(): boolean {
 }
 
 // @[MODEL LAUNCH]: Add check if the new model supports 1M context
-export function checkOpus1mAccess(): boolean {
+export function checkDs1mAccess(): boolean {
   if (is1mContextDisabled()) {
     return false
   }

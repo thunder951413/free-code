@@ -126,7 +126,7 @@ export async function update() {
         writeToStdout(`Update available: ${MACRO.VERSION} → ${latest}\n`)
         writeToStdout('\n')
         writeToStdout('To update, run:\n')
-        writeToStdout(chalk.bold('  brew upgrade claude-code') + '\n')
+        writeToStdout(chalk.bold('  brew upgrade free-code') + '\n')
       } else {
         writeToStdout('Claude is up to date!\n')
       }
@@ -150,7 +150,7 @@ export async function update() {
         writeToStdout(`Update available: ${MACRO.VERSION} → ${latest}\n`)
         writeToStdout('\n')
         writeToStdout('To update, run:\n')
-        writeToStdout(chalk.bold('  apk upgrade claude-code') + '\n')
+        writeToStdout(chalk.bold('  apk upgrade free-code') + '\n')
       } else {
         writeToStdout('Claude is up to date!\n')
       }
@@ -238,7 +238,7 @@ export async function update() {
 
       if (result.latestVersion === MACRO.VERSION) {
         writeToStdout(
-          chalk.green(`Claude Code is up to date (${MACRO.VERSION})`) + '\n',
+          chalk.green(`Free Code is up to date (${MACRO.VERSION})`) + '\n',
         )
       } else {
         writeToStdout(
@@ -296,7 +296,7 @@ export async function update() {
       MACRO.PACKAGE_URL ||
       (process.env.USER_TYPE === 'ant'
         ? '@anthropic-ai/claude-cli'
-        : '@anthropic-ai/claude-code')
+        : '@anthropic-ai/free-code')
     process.stderr.write(
       `  • Manually check: npm view ${packageName} version\n`,
     )
@@ -308,7 +308,7 @@ export async function update() {
   // Check if versions match exactly, including any build metadata (like SHA)
   if (latestVersion === MACRO.VERSION) {
     writeToStdout(
-      chalk.green(`Claude Code is up to date (${MACRO.VERSION})`) + '\n',
+      chalk.green(`Free Code is up to date (${MACRO.VERSION})`) + '\n',
     )
     await gracefulShutdown(0)
   }

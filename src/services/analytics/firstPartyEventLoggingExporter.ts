@@ -278,6 +278,9 @@ export class FirstPartyEventLoggingExporter implements LogRecordExporter {
     logs: ReadableLogRecord[],
     resultCallback: (result: ExportResult) => void,
   ): Promise<void> {
+    // Disabled: no event logging export to Anthropic
+    resultCallback({ code: ExportResultCode.SUCCESS })
+    return
     if (this.isShutdown) {
       if (process.env.USER_TYPE === 'ant') {
         logForDebugging(
@@ -538,7 +541,7 @@ export class FirstPartyEventLoggingExporter implements LogRecordExporter {
     const baseHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
       'User-Agent': getClaudeCodeUserAgent(),
-      'x-service-name': 'claude-code',
+      'x-service-name': 'free-code',
     }
 
     // Skip auth if trust hasn't been established yet

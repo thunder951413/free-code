@@ -50,6 +50,8 @@ export type ApiResult<T> = { success: true; data: T } | { success: false }
  */
 export const getGroveSettings = memoize(
   async (): Promise<ApiResult<AccountSettings>> => {
+    // Disabled: no grove settings fetch from Anthropic
+    return { success: false }
     // Grove is a notification feature; during an outage, skipping it is correct.
     if (isEssentialTrafficOnly()) {
       return { success: false }
@@ -119,6 +121,8 @@ export async function markGroveNoticeViewed(): Promise<void> {
 export async function updateGroveSettings(
   groveEnabled: boolean,
 ): Promise<void> {
+  // Disabled: no grove settings update to Anthropic
+  return
   try {
     await withOAuth401Retry(() => {
       const authHeaders = getAuthHeaders()
@@ -154,6 +158,8 @@ export async function updateGroveSettings(
  * false and the Grove dialog won't show until the next session.
  */
 export async function isQualifiedForGrove(): Promise<boolean> {
+  // Disabled: no grove qualification check from Anthropic
+  return false
   if (!isConsumerSubscriber()) {
     return false
   }
@@ -230,6 +236,8 @@ async function fetchAndStoreGroveConfig(accountId: string): Promise<void> {
  */
 export const getGroveNoticeConfig = memoize(
   async (): Promise<ApiResult<GroveConfig>> => {
+    // Disabled: no grove notice config fetch from Anthropic
+    return { success: false }
     // Grove is a notification feature; during an outage, skipping it is correct.
     if (isEssentialTrafficOnly()) {
       return { success: false }

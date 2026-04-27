@@ -26,7 +26,7 @@ import {
 } from 'src/utils/messages.js'
 import {
   getDefaultMainLoopModelSetting,
-  isNonCustomOpusModel,
+  isNonCustomDsModel,
 } from 'src/utils/model/model.js'
 import { getModelStrings } from 'src/utils/model/modelStrings.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'
@@ -165,7 +165,7 @@ export const CCR_AUTH_ERROR_MESSAGE =
   'Authentication error · This may be a temporary network issue, please try again'
 export const REPEATED_529_ERROR_MESSAGE = 'Repeated 529 Overloaded errors'
 export const CUSTOM_OFF_SWITCH_MESSAGE =
-  'Opus is experiencing high load, please use /model to switch to Sonnet'
+  'Ds is experiencing high load, please use /model to switch to Sonnet'
 export const API_TIMEOUT_ERROR_MESSAGE = 'Request timed out'
 export function getPdfTooLargeErrorMessage(): string {
   const limits = `max ${API_PDF_MAX_PAGES} pages, ${formatFileSize(PDF_TARGET_RAW_SIZE)}`
@@ -195,7 +195,7 @@ export function getRequestTooLargeErrorMessage(): string {
     : `Request too large (${limits}). Double press esc to go back and try with a smaller file.`
 }
 export const OAUTH_ORG_NOT_ALLOWED_ERROR_MESSAGE =
-  'Your account does not have access to Claude Code. Please run /login.'
+  'Your account does not have access to Free Code. Please run /login.'
 
 export function getTokenRevokedErrorMessage(): string {
   return getIsNonInteractiveSession()
@@ -210,7 +210,7 @@ export function getOauthOrgNotAllowedErrorMessage(): string {
 }
 
 /**
- * Check if we're in CCR (Claude Code Remote) mode.
+ * Check if we're in CCR (Free Code Remote) mode.
  * In CCR mode, auth is handled via JWTs provided by the infrastructure,
  * not via /login. Transient auth errors should suggest retrying, not logging in.
  */
@@ -451,7 +451,7 @@ export function getAssistantMessageFromError(
     })
   }
 
-  // Check for emergency capacity off switch for Opus PAYG users
+  // Check for emergency capacity off switch for Ds PAYG users
   if (
     error instanceof Error &&
     error.message.includes(CUSTOM_OFF_SWITCH_MESSAGE)
@@ -470,7 +470,7 @@ export function getAssistantMessageFromError(
     // Check if this is the new API with multiple rate limit headers
     const rateLimitType = error.headers?.get?.(
       'anthropic-ratelimit-unified-representative-claim',
-    ) as 'five_hour' | 'seven_day' | 'seven_day_opus' | null
+    ) as 'five_hour' | 'seven_day' | 'seven_day_Ds' | null
 
     const overageStatus = error.headers?.get?.(
       'anthropic-ratelimit-unified-overage-status',
@@ -525,7 +525,7 @@ export function getAssistantMessageFromError(
       }
 
       // If getRateLimitErrorMessage returned null, it means the fallback mechanism
-      // will handle this silently (e.g., Opus -> Sonnet fallback for eligible users).
+      // will handle this silently (e.g., Ds -> Sonnet fallback for eligible users).
       // Return NO_RESPONSE_REQUESTED so no error is shown to the user, but the
       // message is still recorded in conversation history for Claude to see.
       return createAssistantAPIErrorMessage({
@@ -732,22 +732,22 @@ export function getAssistantMessageFromError(
     })
   }
 
-  // Check for invalid model name error for subscription users trying to use Opus
+  // Check for invalid model name error for subscription users trying to use Ds
   if (
     isClaudeAISubscriber() &&
     error instanceof APIError &&
     error.status === 400 &&
     error.message.toLowerCase().includes('invalid model name') &&
-    (isNonCustomOpusModel(model) || model === 'opus')
+    (isNonCustomDsModel(model) || model === 'Ds')
   ) {
     return createAssistantAPIErrorMessage({
       content:
-        'Claude Opus is not available with the Claude Pro plan. If you have updated your subscription plan recently, refresh your credentials and try again.',
+        'Claude Ds is not available with the Claude Pro plan. If you have updated your subscription plan recently, refresh your credentials and try again.',
       error: 'invalid_request',
     })
   }
 
-  // Check for invalid model name error for Ant users. Claude Code may be
+  // Check for invalid model name error for Ant users. Free Code may be
   // defaulting to a custom internal-only model for Ants, and there might be
   // Ants using new or unknown org IDs that haven't been gated in.
   if (
@@ -943,9 +943,9 @@ function get3PModelFallbackSuggestion(model: string): string | undefined {
   }
   // @[MODEL LAUNCH]: Add a fallback suggestion chain for the new model → previous version for 3P
   const m = model.toLowerCase()
-  // If the failing model looks like an Opus 4.6 variant, suggest the default Opus (4.1 for 3P)
-  if (m.includes('opus-4-6') || m.includes('opus_4_6')) {
-    return getModelStrings().opus41
+  // If the failing model looks like an Ds 4.6 variant, suggest the default Ds (4.1 for 3P)
+  if (m.includes('Ds-4-6') || m.includes('Ds_4_6')) {
+    return getModelStrings().Ds41
   }
   // If the failing model looks like a Sonnet 4.6 variant, suggest Sonnet 4.5
   if (m.includes('sonnet-4-6') || m.includes('sonnet_4_6')) {
@@ -1192,8 +1192,8 @@ export function getErrorMessageIfRefusal(
   logEvent('tengu_refusal_api_response', {})
 
   const baseMessage = getIsNonInteractiveSession()
-    ? `${API_ERROR_MESSAGE_PREFIX}: Claude Code is unable to respond to this request, which appears to violate our Usage Policy (https://www.anthropic.com/legal/aup). Try rephrasing the request or attempting a different approach.`
-    : `${API_ERROR_MESSAGE_PREFIX}: Claude Code is unable to respond to this request, which appears to violate our Usage Policy (https://www.anthropic.com/legal/aup). Please double press esc to edit your last message or start a new session for Claude Code to assist with a different task.`
+    ? `${API_ERROR_MESSAGE_PREFIX}: Free Code is unable to respond to this request, which appears to violate our Usage Policy (https://www.anthropic.com/legal/aup). Try rephrasing the request or attempting a different approach.`
+    : `${API_ERROR_MESSAGE_PREFIX}: Free Code is unable to respond to this request, which appears to violate our Usage Policy (https://www.anthropic.com/legal/aup). Please double press esc to edit your last message or start a new session for Free Code to assist with a different task.`
 
   const modelSuggestion =
     model !== 'claude-sonnet-4-20250514'
