@@ -1,0 +1,72 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-linux
+            artifact: free-code-linux-x64
+            outfile: cli
+          - os: macos-latest
+            target: aarch64-macos
+            artifact: free-code-macos-arm64
+            outfile: cli
+          - os: windows-latest
+            target: x86_64-windows
+            artifact: free-code-windows-x64.exe
+            outfile: cli.exe
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.11'
+
+      - run: bun install --frozen-lockfile
+
+      - run: bun run ./scripts/build.ts --compile
+        env:
+          # build.ts reads package.json for version; tag version overrides
+          FORCE_COLOR: 1
+
+      - name: Rename artifact
+        shell: bash
+        run: |
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            mv dist/cli.exe dist/${{ matrix.artifact }}
+          else
+            mv dist/cli dist/${{ matrix.artifact }}
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist/${{ matrix.artifact }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
