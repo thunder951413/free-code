@@ -61,7 +61,11 @@ def create_app(
     @app.post("/sessions")
     def create_session(payload: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         payload = payload or {}
-        session = bridge.create_session(payload.get("session_id"))
+        session = bridge.create_session(
+            session_id=payload.get("session_id"),
+            settings_path=payload.get("settings_path"),
+            cwd=payload.get("cwd"),
+        )
         return {
             "session_id": session.session_id,
             "cli_session_id": session.cli_session_id,
@@ -129,5 +133,38 @@ def create_app(
                 yield f"data: {json.dumps(error_event, ensure_ascii=False)}\n\n"
 
         return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+    @app.get("/settings")
+    def read_settings(path: Optional[str] = None) -> Dict[str, Any]:
+        if not path:
+            raise HTTPException(status_code=400, detail="path is required")
+        from pathlib import Path
+        p = Path(path).expanduser().resolve()
+        if not p.exists():
+            return {"ok": True, "path": str(p), "data": {}}
+        if not p.is_file():
+            raise HTTPException(status_code=400, detail="path is not a file")
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=f"Failed to read settings: {exc}") from exc
+        return {"ok": True, "path": str(p), "data": data}
+
+    @app.post("/settings")
+    def write_settings(payload: Dict[str, Any]) -> Dict[str, Any]:
+        path = payload.get("path")
+        data = payload.get("data")
+        if not path:
+            raise HTTPException(status_code=400, detail="path is required")
+        if data is None:
+            raise HTTPException(status_code=400, detail="data is required")
+        from pathlib import Path
+        p = Path(path).expanduser().resolve()
+        p.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            p.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"Failed to write settings: {exc}") from exc
+        return {"ok": True, "path": str(p)}
 
     return app

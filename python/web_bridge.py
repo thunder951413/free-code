@@ -43,13 +43,26 @@ class FreeCodeWebBridge:
         self._sessions: Dict[str, WebBridgeSession] = {}
         self._lock = threading.Lock()
 
-    def create_session(self, session_id: Optional[str] = None) -> WebBridgeSession:
+    def create_session(
+        self,
+        session_id: Optional[str] = None,
+        settings_path: Optional[str] = None,
+        cwd: Optional[str] = None,
+    ) -> WebBridgeSession:
         session_id = session_id or str(uuid.uuid4())
         cli_session_id = str(uuid.uuid4())
+        extra = list(self.extra_args)
+        if settings_path:
+            from pathlib import Path
+            expanded = str(Path(settings_path).expanduser().resolve())
+            extra.extend(["--settings", expanded])
+        from pathlib import Path
+        raw_cwd = cwd or self.cwd
+        effective_cwd = str(Path(raw_cwd).expanduser().resolve()) if raw_cwd else None
         client = FreeCodeCliClient(
             cli_path=self.cli_path,
-            cwd=self.cwd,
-            extra_args=self.extra_args,
+            cwd=effective_cwd,
+            extra_args=extra,
             env=self.env,
             session_id=cli_session_id,
             auto_permission_handler=self.auto_permission_handler,
