@@ -837,7 +837,6 @@ CHAT_HTML = """<!doctype html>
     function cleanAssistantText(text) {
       if (!text) return "";
       let cleaned = text;
-      cleaned = cleaned.replace(/<｜DSML｜[^>]*>/g, "");
       cleaned = cleaned.replace(/<｜begin▁of▁sentence｜>/g, "");
       cleaned = cleaned.replace(/<｜end▁of▁sentence｜>/g, "");
       cleaned = cleaned.replace(/<｜EOT｜>/g, "");
@@ -849,8 +848,26 @@ CHAT_HTML = """<!doctype html>
 
     const THINK_START = ["<thinking>"];
     const THINK_END = ["</thinking>"];
-    const TOOL_START = ["<｜tool▁calls▁begin｜>", "```tool_call"];
-    const TOOL_END = ["<｜tool▁calls▁end｜>", "```"];
+    const TOOL_START = [
+      "<｜tool▁calls▁begin｜>",
+      "```tool_call",
+      "<｜DSML｜function_calls"
+    ];
+    const TOOL_END = [
+      "<｜tool▁calls▁end｜>",
+      "```",
+      "<｜DSML｜/function_calls>"
+    ];
+
+    function findEarliest(text, patterns) {
+      let best = -1;
+      let bestPat = null;
+      for (const pat of patterns) {
+        const i = text.indexOf(pat);
+        if (i !== -1 && (best === -1 || i < best)) { best = i; bestPat = pat; }
+      }
+      return best === -1 ? null : { index: best, pattern: bestPat };
+    }
 
     function feedParse(text) {
       const segments = [];
@@ -860,14 +877,11 @@ CHAT_HTML = """<!doctype html>
         if (parseState === "thinking") {
           parseBuffer += remaining;
           remaining = "";
-          for (const ep of THINK_END) {
-            const i = parseBuffer.indexOf(ep);
-            if (i !== -1) {
-              remaining = parseBuffer.slice(i + ep.length);
-              parseBuffer = "";
-              parseState = "normal";
-              break;
-            }
+          const end = findEarliest(parseBuffer, THINK_END);
+          if (end) {
+            remaining = parseBuffer.slice(end.index + end.pattern.length);
+            parseBuffer = "";
+            parseState = "normal";
           }
           continue;
         }
@@ -875,31 +889,38 @@ CHAT_HTML = """<!doctype html>
         if (parseState === "tool_call") {
           parseBuffer += remaining;
           remaining = "";
-          for (const ep of TOOL_END) {
-            const i = parseBuffer.indexOf(ep);
-            if (i !== -1) {
-              const content = parseBuffer.slice(0, i).trim();
-              if (content) segments.push({ type: "tool_call", content });
-              remaining = parseBuffer.slice(i + ep.length);
-              parseBuffer = "";
-              parseState = "normal";
-              break;
-            }
+          const end = findEarliest(parseBuffer, TOOL_END);
+          if (end) {
+            const content = parseBuffer.slice(0, end.index).trim();
+            if (content) segments.push({ type: "tool_call", content });
+            remaining = parseBuffer.slice(end.index + end.pattern.length);
+            parseBuffer = "";
+            parseState = "normal";
+            continue;
+          }
+          const nextStart = findEarliest(parseBuffer, [...THINK_START, ...TOOL_START]);
+          if (nextStart && nextStart.index > 0) {
+            const content = parseBuffer.slice(0, nextStart.index).trim();
+            if (content) segments.push({ type: "tool_call", content });
+            remaining = parseBuffer.slice(nextStart.index);
+            parseBuffer = "";
+            parseState = "normal";
           }
           continue;
         }
 
-        let earliestIdx = remaining.length;
+        const thinkMatch = findEarliest(remaining, THINK_START);
+        const toolMatch = findEarliest(remaining, TOOL_START);
+
         let earliestType = null;
+        let earliestIdx = remaining.length;
         let earliestPat = null;
 
-        for (const pat of THINK_START) {
-          const i = remaining.indexOf(pat);
-          if (i !== -1 && i < earliestIdx) { earliestIdx = i; earliestType = "thinking"; earliestPat = pat; }
+        if (thinkMatch && thinkMatch.index < earliestIdx) {
+          earliestIdx = thinkMatch.index; earliestType = "thinking"; earliestPat = thinkMatch.pattern;
         }
-        for (const pat of TOOL_START) {
-          const i = remaining.indexOf(pat);
-          if (i !== -1 && i < earliestIdx) { earliestIdx = i; earliestType = "tool_call"; earliestPat = pat; }
+        if (toolMatch && toolMatch.index < earliestIdx) {
+          earliestIdx = toolMatch.index; earliestType = "tool_call"; earliestPat = toolMatch.pattern;
         }
 
         if (earliestType) {
@@ -908,26 +929,30 @@ CHAT_HTML = """<!doctype html>
           parseBuffer = remaining.slice(earliestIdx + earliestPat.length);
           parseState = earliestType;
           remaining = "";
+
           if (earliestType === "thinking") {
-            for (const ep of THINK_END) {
-              const i = parseBuffer.indexOf(ep);
-              if (i !== -1) {
-                remaining = parseBuffer.slice(i + ep.length);
-                parseBuffer = "";
-                parseState = "normal";
-                break;
-              }
+            const end = findEarliest(parseBuffer, THINK_END);
+            if (end) {
+              remaining = parseBuffer.slice(end.index + end.pattern.length);
+              parseBuffer = "";
+              parseState = "normal";
             }
-          } else if (earliestType === "tool_call") {
-            for (const ep of TOOL_END) {
-              const i = parseBuffer.indexOf(ep);
-              if (i !== -1) {
-                const content = parseBuffer.slice(0, i).trim();
+          } else {
+            const end = findEarliest(parseBuffer, TOOL_END);
+            if (end) {
+              const content = parseBuffer.slice(0, end.index).trim();
+              if (content) segments.push({ type: "tool_call", content });
+              remaining = parseBuffer.slice(end.index + end.pattern.length);
+              parseBuffer = "";
+              parseState = "normal";
+            } else {
+              const nextStart = findEarliest(parseBuffer, [...THINK_START, ...TOOL_START]);
+              if (nextStart && nextStart.index > 0) {
+                const content = parseBuffer.slice(0, nextStart.index).trim();
                 if (content) segments.push({ type: "tool_call", content });
-                remaining = parseBuffer.slice(i + ep.length);
+                remaining = parseBuffer.slice(nextStart.index);
                 parseBuffer = "";
                 parseState = "normal";
-                break;
               }
             }
           }
