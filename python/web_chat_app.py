@@ -837,7 +837,7 @@ CHAT_HTML = """<!doctype html>
     function cleanAssistantText(text) {
       if (!text) return "";
       let cleaned = text;
-      cleaned = cleaned.replace(/<｜DSML｜function_calls/g, "mcp: ");
+      cleaned = cleaned.replace(/<｜DSML｜function_calls/g, "...");
       cleaned = cleaned.replace(/<｜DSML｜\\/function_calls>/g, "");
       cleaned = cleaned.replace(/<｜begin▁of▁sentence｜>/g, "");
       cleaned = cleaned.replace(/<｜end▁of▁sentence｜>/g, "");
