@@ -837,6 +837,8 @@ CHAT_HTML = """<!doctype html>
     function cleanAssistantText(text) {
       if (!text) return "";
       let cleaned = text;
+      cleaned = cleaned.replace(/<｜DSML｜function_calls/g, "mcp: ");
+      cleaned = cleaned.replace(/<｜DSML｜\\/function_calls>/g, "");
       cleaned = cleaned.replace(/<｜begin▁of▁sentence｜>/g, "");
       cleaned = cleaned.replace(/<｜end▁of▁sentence｜>/g, "");
       cleaned = cleaned.replace(/<｜EOT｜>/g, "");
@@ -850,13 +852,11 @@ CHAT_HTML = """<!doctype html>
     const THINK_END = ["</thinking>"];
     const TOOL_START = [
       "<｜tool▁calls▁begin｜>",
-      "```tool_call",
-      "<｜DSML｜function_calls"
+      "```tool_call"
     ];
     const TOOL_END = [
       "<｜tool▁calls▁end｜>",
-      "```",
-      "<｜DSML｜/function_calls>"
+      "```"
     ];
 
     function findEarliest(text, patterns) {
