@@ -58,14 +58,36 @@ def create_app(
     def health() -> Dict[str, Any]:
         return {"ok": True}
 
+    @app.get("/sessions")
+    def list_sessions() -> Dict[str, Any]:
+        sessions = bridge.list_sessions()
+        return {
+            "sessions": [
+                {"session_id": s.session_id, "cli_session_id": s.cli_session_id}
+                for s in sessions
+            ]
+        }
+
     @app.post("/sessions")
-    def create_session(payload: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def ensure_session(payload: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         payload = payload or {}
-        session = bridge.create_session(
-            session_id=payload.get("session_id"),
+        session = bridge.ensure_session(
+            session_id=payload.get("session_id", ""),
+            cli_session_id=payload.get("cli_session_id"),
             settings_path=payload.get("settings_path"),
             cwd=payload.get("cwd"),
         )
+        return {
+            "session_id": session.session_id,
+            "cli_session_id": session.cli_session_id,
+        }
+
+    @app.get("/sessions/{session_id}")
+    def get_session(session_id: str) -> Dict[str, Any]:
+        try:
+            session = bridge.get_session(session_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
         return {
             "session_id": session.session_id,
             "cli_session_id": session.cli_session_id,

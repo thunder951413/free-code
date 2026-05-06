@@ -46,11 +46,12 @@ class FreeCodeWebBridge:
     def create_session(
         self,
         session_id: Optional[str] = None,
+        cli_session_id: Optional[str] = None,
         settings_path: Optional[str] = None,
         cwd: Optional[str] = None,
     ) -> WebBridgeSession:
         session_id = session_id or str(uuid.uuid4())
-        cli_session_id = str(uuid.uuid4())
+        cli_session_id = cli_session_id or str(uuid.uuid4())
         extra = list(self.extra_args)
         if settings_path:
             from pathlib import Path
@@ -77,6 +78,10 @@ class FreeCodeWebBridge:
             self._sessions[session_id] = session
         return session
 
+    def list_sessions(self) -> list[WebBridgeSession]:
+        with self._lock:
+            return list(self._sessions.values())
+
     def get_session(self, session_id: str) -> WebBridgeSession:
         with self._lock:
             session = self._sessions.get(session_id)
@@ -84,11 +89,24 @@ class FreeCodeWebBridge:
             raise KeyError(f"Unknown CLI session: {session_id}")
         return session
 
-    def ensure_session(self, session_id: str) -> WebBridgeSession:
-        try:
-            return self.get_session(session_id)
-        except KeyError:
-            return self.create_session(session_id=session_id)
+    def ensure_session(
+        self,
+        session_id: str,
+        *,
+        cli_session_id: Optional[str] = None,
+        settings_path: Optional[str] = None,
+        cwd: Optional[str] = None,
+    ) -> WebBridgeSession:
+        with self._lock:
+            session = self._sessions.get(session_id)
+        if session is not None:
+            return session
+        return self.create_session(
+            session_id=session_id,
+            cli_session_id=cli_session_id,
+            settings_path=settings_path,
+            cwd=cwd,
+        )
 
     def ask(
         self,

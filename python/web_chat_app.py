@@ -525,6 +525,10 @@ CHAT_HTML = """<!doctype html>
             Session ID
             <input id="sessionId" readonly />
           </label>
+          <label>
+            CLI Session ID (--session-id)
+            <input id="cliSessionId" placeholder="留空自动生成，或指定 UUID" />
+          </label>
           <button id="clearBtn" class="secondary" type="button">清空消息</button>
         </div>
 
@@ -600,6 +604,7 @@ CHAT_HTML = """<!doctype html>
     const sendBtn = document.getElementById("sendBtn");
     const stopBtn = document.getElementById("stopBtn");
     const sessionInput = document.getElementById("sessionId");
+    const cliSessionInput = document.getElementById("cliSessionId");
     const newChatBtn = document.getElementById("newChatBtn");
     const clearBtn = document.getElementById("clearBtn");
     const sessionListEl = document.getElementById("sessionList");
@@ -615,6 +620,7 @@ CHAT_HTML = """<!doctype html>
 
     const SESSIONS_KEY = "free-code-web-chat-sessions";
     const CURRENT_KEY = "free-code-web-chat-current-session";
+    const CLI_SESSION_KEY = "free-code-web-chat-cli-session-ids";
     const SETTINGS_KEY = "free-code-web-chat-settings";
     const SETTINGS_PATH_KEY = "free-code-web-chat-settings-path";
     const CWD_KEY = "free-code-web-chat-cwd";
@@ -663,7 +669,7 @@ CHAT_HTML = """<!doctype html>
       return sessions.find(s => s.id === currentSessionId);
     }
 
-    function createSession(title = "新对话", cwd = "") {
+    function createSession(title = "新对话", cwd = "", cliSessionId = "") {
       const id = makeSessionId();
       const session = {
         id,
@@ -671,7 +677,8 @@ CHAT_HTML = """<!doctype html>
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         messages: [],
-        cwd: cwd || ""
+        cwd: cwd || "",
+        cliSessionId: cliSessionId || ""
       };
       sessions.unshift(session);
       saveSessions();
@@ -696,16 +703,18 @@ CHAT_HTML = """<!doctype html>
       return true;
     }
 
-    function switchToSession(id) {
+    async function switchToSession(id) {
       currentSessionId = id;
       localStorage.setItem(CURRENT_KEY, id);
       const session = getCurrentSession();
       if (session) {
         sessionInput.value = id;
+        cliSessionInput.value = session.cliSessionId || "";
         updateCwdDisplay(session.cwd);
         renderSessionList();
         renderMessages();
         setStatus("已切换到：" + (session.title || id.slice(0, 16)));
+        await ensureSession(id);
       }
     }
 
@@ -998,15 +1007,25 @@ CHAT_HTML = """<!doctype html>
       const session = getCurrentSession();
       const settingsPath = localStorage.getItem(SETTINGS_PATH_KEY) || "";
       const cwd = session?.cwd || "";
-      await fetch("/sessions", {
+      const cliSessionId = session?.cliSessionId || "";
+      const resp = await fetch("/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           session_id: sessionId,
+          cli_session_id: cliSessionId || undefined,
           settings_path: settingsPath || undefined,
           cwd: cwd || undefined
         }),
       });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.cli_session_id && session) {
+          session.cliSessionId = data.cli_session_id;
+          cliSessionInput.value = data.cli_session_id;
+          saveSessions();
+        }
+      }
     }
 
     async function sendMessage(message) {
@@ -1164,6 +1183,15 @@ CHAT_HTML = """<!doctype html>
       }
     });
 
+    cliSessionInput.addEventListener("change", () => {
+      const session = getCurrentSession();
+      if (session) {
+        session.cliSessionId = cliSessionInput.value.trim();
+        saveSessions();
+        setStatus("CLI Session ID 已更新（新会话生效）");
+      }
+    });
+
     function loadSettings() {
       try {
         const data = localStorage.getItem(SETTINGS_KEY);
@@ -1294,7 +1322,7 @@ CHAT_HTML = """<!doctype html>
       document.getElementById(id).addEventListener("input", updateSettingsPreview);
     });
 
-    function init() {
+    async function init() {
       loadSessions();
       loadSettings();
       const savedCurrent = localStorage.getItem(CURRENT_KEY);
@@ -1306,7 +1334,7 @@ CHAT_HTML = """<!doctype html>
         const newSession = createSession();
         currentSessionId = newSession.id;
       }
-      switchToSession(currentSessionId);
+      await switchToSession(currentSessionId);
     }
 
     init();
