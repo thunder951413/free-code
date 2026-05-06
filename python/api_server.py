@@ -107,12 +107,6 @@ def create_app(
         if not isinstance(message, str) or not message.strip():
             raise HTTPException(status_code=400, detail="message must be a non-empty string")
 
-        timeout_value = payload.get("timeout", 180)
-        try:
-            timeout = float(timeout_value)
-        except (TypeError, ValueError):
-            raise HTTPException(status_code=400, detail="timeout must be a number")
-
         try:
             session = bridge.ensure_session(session_id)
             session.client.send_text(message)
@@ -120,11 +114,9 @@ def create_app(
             raise HTTPException(status_code=500, detail=str(exc)) from exc
 
         def event_stream():
-            deadline = time.monotonic() + timeout
             try:
                 while True:
-                    remaining = max(0.0, deadline - time.monotonic())
-                    event = session.client.read_event(timeout=remaining)
+                    event = session.client.read_event(timeout=600)
                     yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
                     if event.get("type") == "result":
                         break

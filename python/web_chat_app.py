@@ -525,6 +525,7 @@ CHAT_HTML = """<!doctype html>
         <form id="chatForm" class="composer">
           <textarea id="messageInput" placeholder="输入你想对 free-code 说的话，例如：请帮我概览当前项目结构"></textarea>
           <button id="sendBtn" type="submit">发送</button>
+          <button id="stopBtn" type="button" style="display:none;border:0;border-radius:10px;background:var(--error);color:white;padding:10px 14px;cursor:pointer;font-size:14px;">终止</button>
         </form>
 
         <div id="status" class="status">就绪</div>
@@ -587,6 +588,7 @@ CHAT_HTML = """<!doctype html>
     const formEl = document.getElementById("chatForm");
     const inputEl = document.getElementById("messageInput");
     const sendBtn = document.getElementById("sendBtn");
+    const stopBtn = document.getElementById("stopBtn");
     const sessionInput = document.getElementById("sessionId");
     const newChatBtn = document.getElementById("newChatBtn");
     const clearBtn = document.getElementById("clearBtn");
@@ -609,6 +611,7 @@ CHAT_HTML = """<!doctype html>
     let sessions = [];
     let currentSessionId = null;
     let activeAssistantBubble = null;
+    let currentAbortController = null;
     let sending = false;
 
     let currentSettings = {
@@ -821,22 +824,43 @@ CHAT_HTML = """<!doctype html>
       statusEl.textContent = text;
     }
 
+    function cleanAssistantText(text) {
+      if (!text) return "";
+      let cleaned = text;
+      cleaned = cleaned.replace(/<｜DSML｜[^>]*>/g, "");
+      cleaned = cleaned.replace(/<｜begin▁of▁sentence｜>/g, "");
+      cleaned = cleaned.replace(/<｜end▁of▁sentence｜>/g, "");
+      cleaned = cleaned.replace(/<｜EOT｜>/g, "");
+      cleaned = cleaned.replace(/<thinking>[\s\S]*?<\/thinking>/g, "");
+      cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/g, "");
+      cleaned = cleaned.replace(/<tool_call>[\s\S]*?<\/tool_call>/g, "");
+      cleaned = cleaned.replace(/<｜tool▁calls▁begin｜>[\s\S]*?<｜tool▁calls▁end｜>/g, "");
+      cleaned = cleaned.replace(/```tool_call[\s\S]*?```/g, "");
+      cleaned = cleaned.trim();
+      return cleaned;
+    }
+
     function extractAssistantText(event) {
+      let raw = "";
       if (event.type === "assistant_partial") {
-        return typeof event.delta === "string" ? event.delta : "";
+        raw = typeof event.delta === "string" ? event.delta : "";
+      } else {
+        const message = event.message;
+        if (!message || !Array.isArray(message.content)) return "";
+        raw = message.content
+          .filter((block) => block && block.type === "text" && typeof block.text === "string")
+          .map((block) => block.text)
+          .join("");
       }
-      const message = event.message;
-      if (!message || !Array.isArray(message.content)) return "";
-      return message.content
-        .filter((block) => block && block.type === "text" && typeof block.text === "string")
-        .map((block) => block.text)
-        .join("");
+      return cleanAssistantText(raw);
     }
 
     function setSending(next) {
       sending = next;
       sendBtn.disabled = next;
       inputEl.disabled = next;
+      sendBtn.style.display = next ? "none" : "";
+      stopBtn.style.display = next ? "" : "none";
     }
 
     function resetAssistantBubble() {
@@ -864,6 +888,7 @@ CHAT_HTML = """<!doctype html>
 
       addMessage("user", message);
       addMessageToSession("user", message);
+      currentAbortController = new AbortController();
       setSending(true);
       setStatus("发送中...");
       resetAssistantBubble();
@@ -873,7 +898,8 @@ CHAT_HTML = """<!doctype html>
       const response = await fetch("/chat/" + encodeURIComponent(session.id) + "/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message, timeout: 180 }),
+        body: JSON.stringify({ message }),
+        signal: currentAbortController?.signal,
       });
 
       if (!response.ok || !response.body) {
@@ -933,6 +959,12 @@ CHAT_HTML = """<!doctype html>
       }
     }
 
+    stopBtn.addEventListener("click", () => {
+      if (currentAbortController) {
+        currentAbortController.abort();
+      }
+    });
+
     formEl.addEventListener("submit", async (event) => {
       event.preventDefault();
       if (sending) return;
@@ -943,11 +975,18 @@ CHAT_HTML = """<!doctype html>
       try {
         await sendMessage(message);
       } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        addMessage("error", errorMsg);
-        addMessageToSession("error", errorMsg);
-        setStatus("请求失败");
+        if (error.name === "AbortError") {
+          addMessage("system", "已手动终止");
+          addMessageToSession("system", "已手动终止");
+          setStatus("已终止");
+        } else {
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          addMessage("error", errorMsg);
+          addMessageToSession("error", errorMsg);
+          setStatus("请求失败");
+        }
       } finally {
+        currentAbortController = null;
         setSending(false);
         resetAssistantBubble();
         inputEl.focus();
