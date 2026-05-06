@@ -426,6 +426,16 @@ CHAT_HTML = """<!doctype html>
       color: var(--muted);
       margin-bottom: 6px;
     }
+    .tool-call-block {
+      display: block;
+      font-size: 12px;
+      color: #e8a0a0;
+      margin: 4px 0;
+      padding: 4px 8px;
+      border-left: 2px solid rgba(232, 160, 160, 0.4);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
     .composer {
       margin-top: 16px;
       display: flex;
@@ -831,28 +841,118 @@ CHAT_HTML = """<!doctype html>
       cleaned = cleaned.replace(/<｜begin▁of▁sentence｜>/g, "");
       cleaned = cleaned.replace(/<｜end▁of▁sentence｜>/g, "");
       cleaned = cleaned.replace(/<｜EOT｜>/g, "");
-      cleaned = cleaned.replace(/<thinking>[\s\S]*?<\/thinking>/g, "");
-      cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/g, "");
-      cleaned = cleaned.replace(/<tool_call>[\s\S]*?<\/tool_call>/g, "");
-      cleaned = cleaned.replace(/<｜tool▁calls▁begin｜>[\s\S]*?<｜tool▁calls▁end｜>/g, "");
-      cleaned = cleaned.replace(/```tool_call[\s\S]*?```/g, "");
-      cleaned = cleaned.trim();
       return cleaned;
     }
 
-    function extractAssistantText(event) {
+    let parseState = "normal";
+    let parseBuffer = "";
+
+    const THINK_START = ["<thinking>"];
+    const THINK_END = ["</thinking>"];
+    const TOOL_START = ["<｜tool▁calls▁begin｜>", "```tool_call"];
+    const TOOL_END = ["<｜tool▁calls▁end｜>", "```"];
+
+    function feedParse(text) {
+      const segments = [];
+      let remaining = text;
+
+      while (remaining.length > 0) {
+        if (parseState === "thinking") {
+          parseBuffer += remaining;
+          remaining = "";
+          for (const ep of THINK_END) {
+            const i = parseBuffer.indexOf(ep);
+            if (i !== -1) {
+              remaining = parseBuffer.slice(i + ep.length);
+              parseBuffer = "";
+              parseState = "normal";
+              break;
+            }
+          }
+          continue;
+        }
+
+        if (parseState === "tool_call") {
+          parseBuffer += remaining;
+          remaining = "";
+          for (const ep of TOOL_END) {
+            const i = parseBuffer.indexOf(ep);
+            if (i !== -1) {
+              const content = parseBuffer.slice(0, i).trim();
+              if (content) segments.push({ type: "tool_call", content });
+              remaining = parseBuffer.slice(i + ep.length);
+              parseBuffer = "";
+              parseState = "normal";
+              break;
+            }
+          }
+          continue;
+        }
+
+        let earliestIdx = remaining.length;
+        let earliestType = null;
+        let earliestPat = null;
+
+        for (const pat of THINK_START) {
+          const i = remaining.indexOf(pat);
+          if (i !== -1 && i < earliestIdx) { earliestIdx = i; earliestType = "thinking"; earliestPat = pat; }
+        }
+        for (const pat of TOOL_START) {
+          const i = remaining.indexOf(pat);
+          if (i !== -1 && i < earliestIdx) { earliestIdx = i; earliestType = "tool_call"; earliestPat = pat; }
+        }
+
+        if (earliestType) {
+          const before = remaining.slice(0, earliestIdx);
+          if (before) segments.push({ type: "text", content: before });
+          parseBuffer = remaining.slice(earliestIdx + earliestPat.length);
+          parseState = earliestType;
+          remaining = "";
+          if (earliestType === "thinking") {
+            for (const ep of THINK_END) {
+              const i = parseBuffer.indexOf(ep);
+              if (i !== -1) {
+                remaining = parseBuffer.slice(i + ep.length);
+                parseBuffer = "";
+                parseState = "normal";
+                break;
+              }
+            }
+          } else if (earliestType === "tool_call") {
+            for (const ep of TOOL_END) {
+              const i = parseBuffer.indexOf(ep);
+              if (i !== -1) {
+                const content = parseBuffer.slice(0, i).trim();
+                if (content) segments.push({ type: "tool_call", content });
+                remaining = parseBuffer.slice(i + ep.length);
+                parseBuffer = "";
+                parseState = "normal";
+                break;
+              }
+            }
+          }
+        } else {
+          if (remaining) segments.push({ type: "text", content: remaining });
+          remaining = "";
+        }
+      }
+      return segments;
+    }
+
+    function extractAssistantSegments(event) {
       let raw = "";
       if (event.type === "assistant_partial") {
         raw = typeof event.delta === "string" ? event.delta : "";
       } else {
         const message = event.message;
-        if (!message || !Array.isArray(message.content)) return "";
+        if (!message || !Array.isArray(message.content)) return [];
         raw = message.content
           .filter((block) => block && block.type === "text" && typeof block.text === "string")
           .map((block) => block.text)
           .join("");
       }
-      return cleanAssistantText(raw);
+      raw = cleanAssistantText(raw);
+      return feedParse(raw);
     }
 
     function setSending(next) {
@@ -865,6 +965,8 @@ CHAT_HTML = """<!doctype html>
 
     function resetAssistantBubble() {
       activeAssistantBubble = null;
+      parseState = "normal";
+      parseBuffer = "";
     }
 
     async function ensureSession(sessionId) {
@@ -924,13 +1026,21 @@ CHAT_HTML = """<!doctype html>
           const event = JSON.parse(chunk.slice(6));
 
           if (event.type === "assistant" || event.type === "assistant_partial") {
-            const text = extractAssistantText(event);
-            if (text) {
+            const segments = extractAssistantSegments(event);
+            for (const seg of segments) {
               if (!activeAssistantBubble) {
                 activeAssistantBubble = addMessage("assistant", "");
               }
-              activeAssistantBubble.textContent += text;
-              fullText += text;
+              if (seg.type === "text") {
+                activeAssistantBubble.appendChild(document.createTextNode(seg.content));
+                fullText += seg.content;
+              } else if (seg.type === "tool_call") {
+                const tcEl = document.createElement("span");
+                tcEl.className = "tool-call-block";
+                tcEl.textContent = "tool_call: " + seg.content;
+                activeAssistantBubble.appendChild(tcEl);
+                fullText += "[tool_call: " + seg.content + "]";
+              }
               scrollToBottom();
             }
             continue;
