@@ -13,7 +13,7 @@ except ImportError:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run the simple free-code web chat app.")
-    parser.add_argument("--host", default="127.0.0.1", help="Bind host.")
+    parser.add_argument("--host", default="0.0.0.0", help="Bind host (default 0.0.0.0 for LAN access).")
     parser.add_argument("--port", type=int, default=18001, help="Bind port.")
     parser.add_argument("--cli", help="Path to CLI executable.")
     parser.add_argument("--cwd", help="Working directory for CLI sessions.")

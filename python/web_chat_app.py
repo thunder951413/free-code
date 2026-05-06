@@ -555,6 +555,72 @@ CHAT_HTML = """<!doctype html>
       .composer { flex-direction: column; }
       .composer button { width: 100%; }
     }
+    .content p { margin: 0 0 8px; }
+    .content p:last-child { margin-bottom: 0; }
+    .content h1, .content h2, .content h3, .content h4, .content h5, .content h6 {
+      margin: 8px 0 4px;
+      font-weight: 600;
+      line-height: 1.3;
+    }
+    .content h1 { font-size: 1.4em; }
+    .content h2 { font-size: 1.25em; }
+    .content h3 { font-size: 1.15em; }
+    .content h4 { font-size: 1.05em; }
+    .content ul, .content ol { margin: 4px 0; padding-left: 20px; }
+    .content li { margin: 2px 0; }
+    .content code {
+      background: var(--panel-2);
+      padding: 1px 4px;
+      border-radius: 4px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.92em;
+    }
+    .content pre {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      margin: 8px 0;
+      overflow-x: auto;
+    }
+    .content pre code {
+      background: transparent;
+      padding: 0;
+      border-radius: 0;
+      font-size: 0.9em;
+    }
+    .content blockquote {
+      border-left: 3px solid var(--accent);
+      margin: 8px 0;
+      padding: 4px 12px;
+      background: rgba(91, 140, 255, 0.08);
+      border-radius: 0 6px 6px 0;
+    }
+    .content a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    .content a:hover { text-decoration: underline; }
+    .content hr {
+      border: 0;
+      border-top: 1px solid var(--border);
+      margin: 12px 0;
+    }
+    .content table {
+      border-collapse: collapse;
+      margin: 8px 0;
+      width: auto;
+      max-width: 100%;
+    }
+    .content th, .content td {
+      border: 1px solid var(--border);
+      padding: 6px 10px;
+      text-align: left;
+    }
+    .content th {
+      background: var(--panel-2);
+      font-weight: 600;
+    }
     @media (max-width: 560px) {
       .sidebar { display: none; }
     }
@@ -913,6 +979,113 @@ CHAT_HTML = """<!doctype html>
       chatEl.scrollTop = chatEl.scrollHeight;
     }
 
+    function escapeHtml(text) {
+      return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function renderInline(text) {
+      const codes = [];
+      text = text.replace(/`([^`]+)`/g, (match, code) => {
+        codes.push(escapeHtml(code));
+        return "\x00" + (codes.length - 1) + "\x00";
+      });
+      text = text.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+      text = text.replace(/__([^_]+)__/g, "<strong>$1</strong>");
+      text = text.replace(/\*([^*]+)\*/g, "<em>$1</em>");
+      text = text.replace(/_([^_]+)_/g, "<em>$1</em>");
+      text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+      text = text.replace(/\x00(\d+)\x00/g, (match, idx) => `<code>${codes[parseInt(idx)]}</code>`);
+      return text;
+    }
+
+    function renderMarkdown(text) {
+      if (!text) return "";
+      const lines = text.split("\n");
+      let html = "";
+      let inCodeBlock = false;
+      let codeBlockLang = "";
+      let codeBlockContent = [];
+      let inList = false;
+      let listType = "";
+
+      for (let i = 0; i < lines.length; i++) {
+        let line = lines[i];
+        const codeBlockMatch = line.match(/^```(\w*)\s*$/);
+        if (codeBlockMatch) {
+          if (!inCodeBlock) {
+            inCodeBlock = true;
+            codeBlockLang = codeBlockMatch[1] || "";
+            codeBlockContent = [];
+            continue;
+          } else {
+            inCodeBlock = false;
+            const langClass = codeBlockLang ? ` class="language-${escapeHtml(codeBlockLang)}"` : "";
+            html += `<pre><code${langClass}>${escapeHtml(codeBlockContent.join("\n"))}</code></pre>\n`;
+            codeBlockLang = "";
+            continue;
+          }
+        }
+        if (inCodeBlock) {
+          codeBlockContent.push(line);
+          continue;
+        }
+        if (!line.trim()) {
+          if (inList) { html += `</${listType}>\n`; inList = false; listType = ""; }
+          html += "<br>\n";
+          continue;
+        }
+        if (/^---+\s*$/.test(line) || /^\*\*\*+\s*$/.test(line)) {
+          if (inList) { html += `</${listType}>\n`; inList = false; listType = ""; }
+          html += "<hr>\n";
+          continue;
+        }
+        if (line.startsWith("> ")) {
+          if (inList) { html += `</${listType}>\n`; inList = false; listType = ""; }
+          html += `<blockquote>${renderInline(line.slice(2))}</blockquote>\n`;
+          continue;
+        }
+        const ulMatch = line.match(/^(\s*)[-*]\s+(.*)$/);
+        if (ulMatch) {
+          if (!inList || listType !== "ul") {
+            if (inList) html += `</${listType}>\n`;
+            html += "<ul>\n";
+            inList = true; listType = "ul";
+          }
+          html += `<li>${renderInline(ulMatch[2])}</li>\n`;
+          continue;
+        }
+        const olMatch = line.match(/^(\s*)\d+\.\s+(.*)$/);
+        if (olMatch) {
+          if (!inList || listType !== "ol") {
+            if (inList) html += `</${listType}>\n`;
+            html += "<ol>\n";
+            inList = true; listType = "ol";
+          }
+          html += `<li>${renderInline(olMatch[2])}</li>\n`;
+          continue;
+        }
+        const hMatch = line.match(/^(#{1,6})\s+(.*)$/);
+        if (hMatch) {
+          if (inList) { html += `</${listType}>\n`; inList = false; listType = ""; }
+          const level = hMatch[1].length;
+          html += `<h${level}>${renderInline(hMatch[2])}</h${level}>\n`;
+          continue;
+        }
+        if (inList) { html += `</${listType}>\n`; inList = false; listType = ""; }
+        html += `<p>${renderInline(line)}</p>\n`;
+      }
+      if (inCodeBlock) {
+        const langClass = codeBlockLang ? ` class="language-${escapeHtml(codeBlockLang)}"` : "";
+        html += `<pre><code${langClass}>${escapeHtml(codeBlockContent.join("\n"))}</code></pre>\n`;
+      }
+      if (inList) { html += `</${listType}>\n`; }
+      return html;
+    }
+
     function addMessage(role, text) {
       const wrapper = document.createElement("div");
       wrapper.className = "message " + role;
@@ -923,7 +1096,11 @@ CHAT_HTML = """<!doctype html>
 
       const contentEl = document.createElement("div");
       contentEl.className = "content";
-      contentEl.textContent = text || "";
+      if (text && role !== "user") {
+        contentEl.innerHTML = renderMarkdown(text);
+      } else {
+        contentEl.textContent = text || "";
+      }
 
       wrapper.appendChild(roleEl);
       wrapper.appendChild(contentEl);
@@ -1191,6 +1368,9 @@ CHAT_HTML = """<!doctype html>
           if (event.type === "result") {
             if (fullText) {
               addMessageToSession("assistant", fullText);
+              if (activeAssistantBubble) {
+                activeAssistantBubble.innerHTML = renderMarkdown(fullText);
+              }
             }
             setStatus("本轮完成");
             continue;
