@@ -386,7 +386,7 @@ CHAT_HTML = """<!doctype html>
       font-size: 14px;
     }
     .toolbar button.secondary {
-      background: #33406f;
+      background: var(--secondary-btn, #33406f);
     }
     .chat-container {
       flex: 1;
@@ -412,12 +412,12 @@ CHAT_HTML = """<!doctype html>
       line-height: 1.5;
       white-space: pre-wrap;
       word-break: break-word;
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--msg-border, rgba(255, 255, 255, 0.08));
     }
-    .message.user { background: rgba(31, 122, 77, 0.25); border-color: rgba(31, 122, 77, 0.45); }
-    .message.assistant { background: rgba(36, 63, 143, 0.28); border-color: rgba(91, 140, 255, 0.4); }
-    .message.system { background: rgba(91, 95, 115, 0.25); color: #d6dbf5; }
-    .message.error { background: rgba(161, 59, 83, 0.28); border-color: rgba(210, 95, 124, 0.4); }
+    .message.user { background: var(--user-bg, rgba(31, 122, 77, 0.25)); border-color: var(--user-border, rgba(31, 122, 77, 0.45)); }
+    .message.assistant { background: var(--assistant-bg, rgba(36, 63, 143, 0.28)); border-color: var(--assistant-border, rgba(91, 140, 255, 0.4)); }
+    .message.system { background: var(--system-bg, rgba(91, 95, 115, 0.25)); color: var(--system-text, #d6dbf5); }
+    .message.error { background: var(--error-bg, rgba(161, 59, 83, 0.28)); border-color: var(--error-border, rgba(210, 95, 124, 0.4)); }
     .message .role {
       display: block;
       font-size: 12px;
@@ -429,10 +429,10 @@ CHAT_HTML = """<!doctype html>
     .tool-call-block {
       display: block;
       font-size: 12px;
-      color: #e8a0a0;
+      color: var(--tool-text, #e8a0a0);
       margin: 4px 0;
       padding: 4px 8px;
-      border-left: 2px solid rgba(232, 160, 160, 0.4);
+      border-left: 2px solid var(--tool-border, rgba(232, 160, 160, 0.4));
       white-space: pre-wrap;
       word-break: break-word;
     }
@@ -482,6 +482,74 @@ CHAT_HTML = """<!doctype html>
       font-size: 48px;
       opacity: 0.5;
     }
+    .theme-btn {
+      width: 36px;
+      height: 36px;
+      border: 0;
+      border-radius: 10px;
+      background: var(--panel);
+      color: var(--muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      transition: background 0.15s, color 0.15s;
+      flex-shrink: 0;
+      position: relative;
+    }
+    .theme-btn:hover {
+      background: var(--panel-2);
+      color: var(--text);
+    }
+    .theme-dropdown {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 6px;
+      min-width: 160px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      z-index: 2000;
+      display: none;
+    }
+    .theme-dropdown.active {
+      display: block;
+    }
+    .theme-option {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+      font-size: 14px;
+      color: var(--text);
+      border: 0;
+      background: transparent;
+      width: 100%;
+      text-align: left;
+    }
+    .theme-option:hover {
+      background: var(--hover);
+    }
+    .theme-option.active {
+      background: var(--active);
+    }
+    .theme-swatch {
+      width: 20px;
+      height: 20px;
+      border-radius: 6px;
+      border: 2px solid var(--border);
+      flex-shrink: 0;
+    }
+    .theme-option.active .theme-swatch {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent);
+    }
     @media (max-width: 720px) {
       .sidebar { width: 200px; min-width: 200px; }
       .composer { flex-direction: column; }
@@ -514,6 +582,31 @@ CHAT_HTML = """<!doctype html>
                 <span class="cwd-icon">📁</span>
                 <span id="cwdText" class="cwd-text">点击设置路径</span>
               </button>
+              <div style="position:relative;">
+                <button id="themeBtn" class="theme-btn" title="切换主题">🎨</button>
+                <div id="themeDropdown" class="theme-dropdown">
+                  <button class="theme-option active" data-theme="dark">
+                    <span class="theme-swatch" style="background:#0b1020;"></span>
+                    深色
+                  </button>
+                  <button class="theme-option" data-theme="light">
+                    <span class="theme-swatch" style="background:#f5f5f5;"></span>
+                    浅色
+                  </button>
+                  <button class="theme-option" data-theme="blue">
+                    <span class="theme-swatch" style="background:#0a1628;"></span>
+                    蓝色
+                  </button>
+                  <button class="theme-option" data-theme="vscode">
+                    <span class="theme-swatch" style="background:#1e1e1e;"></span>
+                    VS Code
+                  </button>
+                  <button class="theme-option" data-theme="github">
+                    <span class="theme-swatch" style="background:#0d1117;"></span>
+                    GitHub
+                  </button>
+                </div>
+              </div>
               <button id="settingsBtn" class="settings-btn" title="设置">⚙️</button>
             </div>
           </div>
@@ -1321,6 +1414,206 @@ CHAT_HTML = """<!doctype html>
     ["settingApiKey", "settingBaseUrl", "settingModel", "settingSmallModel", "settingEnv", "settingFilePath"].forEach(id => {
       document.getElementById(id).addEventListener("input", updateSettingsPreview);
     });
+
+    const THEME_KEY = "free-code-web-chat-theme";
+    const THEMES = {
+      dark: {
+        "color-scheme": "dark",
+        "--bg": "#0b1020",
+        "--panel": "#121933",
+        "--panel-2": "#1a2347",
+        "--text": "#e8ecff",
+        "--muted": "#9aa6d1",
+        "--accent": "#5b8cff",
+        "--border": "#2b376c",
+        "--user": "#1f7a4d",
+        "--assistant": "#243f8f",
+        "--system": "#5b5f73",
+        "--error": "#a13b53",
+        "--hover": "#1e2a52",
+        "--active": "#2a3a6e",
+        "--body-bg": "linear-gradient(180deg, #0a0f1d 0%, #111831 100%)",
+        "--chat-bg": "rgba(12, 17, 34, 0.85)",
+        "--msg-border": "rgba(255, 255, 255, 0.08)",
+        "--user-bg": "rgba(31, 122, 77, 0.25)",
+        "--user-border": "rgba(31, 122, 77, 0.45)",
+        "--assistant-bg": "rgba(36, 63, 143, 0.28)",
+        "--assistant-border": "rgba(91, 140, 255, 0.4)",
+        "--system-bg": "rgba(91, 95, 115, 0.25)",
+        "--system-text": "#d6dbf5",
+        "--error-bg": "rgba(161, 59, 83, 0.28)",
+        "--error-border": "rgba(210, 95, 124, 0.4)",
+        "--secondary-btn": "#33406f",
+        "--tool-text": "#e8a0a0",
+        "--tool-border": "rgba(232, 160, 160, 0.4)"
+      },
+      light: {
+        "color-scheme": "light",
+        "--bg": "#ffffff",
+        "--panel": "#f6f8fa",
+        "--panel-2": "#e8ecf0",
+        "--text": "#1f2328",
+        "--muted": "#656d76",
+        "--accent": "#0969da",
+        "--border": "#d0d7de",
+        "--user": "#1a7f37",
+        "--assistant": "#0969da",
+        "--system": "#6e7781",
+        "--error": "#cf222e",
+        "--hover": "#e8ecf0",
+        "--active": "#d0d7de",
+        "--body-bg": "linear-gradient(180deg, #f6f8fa 0%, #ffffff 100%)",
+        "--chat-bg": "rgba(255, 255, 255, 0.9)",
+        "--msg-border": "rgba(0, 0, 0, 0.08)",
+        "--user-bg": "rgba(26, 127, 55, 0.12)",
+        "--user-border": "rgba(26, 127, 55, 0.3)",
+        "--assistant-bg": "rgba(9, 105, 218, 0.1)",
+        "--assistant-border": "rgba(9, 105, 218, 0.3)",
+        "--system-bg": "rgba(110, 119, 129, 0.1)",
+        "--system-text": "#1f2328",
+        "--error-bg": "rgba(207, 34, 46, 0.1)",
+        "--error-border": "rgba(207, 34, 46, 0.3)",
+        "--secondary-btn": "#d0d7de",
+        "--tool-text": "#cf222e",
+        "--tool-border": "rgba(207, 34, 46, 0.3)"
+      },
+      blue: {
+        "color-scheme": "dark",
+        "--bg": "#0a1628",
+        "--panel": "#0f1f3c",
+        "--panel-2": "#162d54",
+        "--text": "#c9e1ff",
+        "--muted": "#7ba1d4",
+        "--accent": "#3b9eff",
+        "--border": "#1e3a5f",
+        "--user": "#0e8a5e",
+        "--assistant": "#1a5cb0",
+        "--system": "#4a5568",
+        "--error": "#c53030",
+        "--hover": "#162d54",
+        "--active": "#1e3a5f",
+        "--body-bg": "linear-gradient(180deg, #071020 0%, #0f1f3c 100%)",
+        "--chat-bg": "rgba(10, 22, 40, 0.9)",
+        "--msg-border": "rgba(59, 158, 255, 0.1)",
+        "--user-bg": "rgba(14, 138, 94, 0.2)",
+        "--user-border": "rgba(14, 138, 94, 0.4)",
+        "--assistant-bg": "rgba(26, 92, 176, 0.25)",
+        "--assistant-border": "rgba(59, 158, 255, 0.35)",
+        "--system-bg": "rgba(74, 85, 104, 0.2)",
+        "--system-text": "#c9e1ff",
+        "--error-bg": "rgba(197, 48, 48, 0.2)",
+        "--error-border": "rgba(197, 48, 48, 0.4)",
+        "--secondary-btn": "#1e3a5f",
+        "--tool-text": "#f0a0a0",
+        "--tool-border": "rgba(240, 160, 160, 0.3)"
+      },
+      vscode: {
+        "color-scheme": "dark",
+        "--bg": "#1e1e1e",
+        "--panel": "#252526",
+        "--panel-2": "#2d2d2d",
+        "--text": "#cccccc",
+        "--muted": "#858585",
+        "--accent": "#0078d4",
+        "--border": "#3c3c3c",
+        "--user": "#388a34",
+        "--assistant": "#264f78",
+        "--system": "#6a9955",
+        "--error": "#f44747",
+        "--hover": "#2a2d2e",
+        "--active": "#37373d",
+        "--body-bg": "linear-gradient(180deg, #1e1e1e 0%, #252526 100%)",
+        "--chat-bg": "rgba(30, 30, 30, 0.9)",
+        "--msg-border": "rgba(255, 255, 255, 0.06)",
+        "--user-bg": "rgba(56, 138, 52, 0.18)",
+        "--user-border": "rgba(56, 138, 52, 0.35)",
+        "--assistant-bg": "rgba(38, 79, 120, 0.22)",
+        "--assistant-border": "rgba(0, 120, 212, 0.35)",
+        "--system-bg": "rgba(106, 153, 85, 0.15)",
+        "--system-text": "#cccccc",
+        "--error-bg": "rgba(244, 71, 71, 0.18)",
+        "--error-border": "rgba(244, 71, 71, 0.35)",
+        "--secondary-btn": "#3c3c3c",
+        "--tool-text": "#ce9178",
+        "--tool-border": "rgba(206, 145, 120, 0.3)"
+      },
+      github: {
+        "color-scheme": "dark",
+        "--bg": "#0d1117",
+        "--panel": "#161b22",
+        "--panel-2": "#21262d",
+        "--text": "#e6edf3",
+        "--muted": "#8b949e",
+        "--accent": "#58a6ff",
+        "--border": "#30363d",
+        "--user": "#238636",
+        "--assistant": "#1f6feb",
+        "--system": "#8b949e",
+        "--error": "#f85149",
+        "--hover": "#21262d",
+        "--active": "#30363d",
+        "--body-bg": "linear-gradient(180deg, #0d1117 0%, #161b22 100%)",
+        "--chat-bg": "rgba(13, 17, 23, 0.9)",
+        "--msg-border": "rgba(255, 255, 255, 0.06)",
+        "--user-bg": "rgba(35, 134, 54, 0.15)",
+        "--user-border": "rgba(35, 134, 54, 0.35)",
+        "--assistant-bg": "rgba(31, 111, 235, 0.15)",
+        "--assistant-border": "rgba(88, 166, 255, 0.35)",
+        "--system-bg": "rgba(139, 148, 158, 0.1)",
+        "--system-text": "#e6edf3",
+        "--error-bg": "rgba(248, 81, 73, 0.15)",
+        "--error-border": "rgba(248, 81, 73, 0.35)",
+        "--secondary-btn": "#30363d",
+        "--tool-text": "#f85149",
+        "--tool-border": "rgba(248, 81, 73, 0.3)"
+      }
+    };
+
+    function applyTheme(name) {
+      const theme = THEMES[name];
+      if (!theme) return;
+      const root = document.documentElement;
+      root.style.colorScheme = theme["color-scheme"];
+      for (const [key, value] of Object.entries(theme)) {
+        if (key.startsWith("--")) root.style.setProperty(key, value);
+      }
+      document.body.style.background = theme["--body-bg"];
+      const chatEl = document.getElementById("chat");
+      if (chatEl) chatEl.style.background = theme["--chat-bg"];
+      document.querySelectorAll(".theme-option").forEach(opt => {
+        opt.classList.toggle("active", opt.dataset.theme === name);
+      });
+    }
+
+    function initTheme() {
+      const saved = localStorage.getItem(THEME_KEY) || "dark";
+      applyTheme(saved);
+    }
+
+    const themeBtn = document.getElementById("themeBtn");
+    const themeDropdown = document.getElementById("themeDropdown");
+
+    themeBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      themeDropdown.classList.toggle("active");
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!themeDropdown.contains(e.target) && e.target !== themeBtn) {
+        themeDropdown.classList.remove("active");
+      }
+    });
+
+    themeDropdown.addEventListener("click", (e) => {
+      const option = e.target.closest(".theme-option");
+      if (!option) return;
+      const name = option.dataset.theme;
+      localStorage.setItem(THEME_KEY, name);
+      applyTheme(name);
+      themeDropdown.classList.remove("active");
+    });
+
+    initTheme();
 
     async function init() {
       loadSessions();

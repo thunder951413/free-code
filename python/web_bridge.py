@@ -51,7 +51,7 @@ class FreeCodeWebBridge:
         cwd: Optional[str] = None,
     ) -> WebBridgeSession:
         session_id = session_id or str(uuid.uuid4())
-        cli_session_id = cli_session_id or str(uuid.uuid4())
+        effective_cli_id = cli_session_id or str(uuid.uuid4())
         extra = list(self.extra_args)
         if settings_path:
             from pathlib import Path
@@ -60,23 +60,43 @@ class FreeCodeWebBridge:
         from pathlib import Path
         raw_cwd = cwd or self.cwd
         effective_cwd = str(Path(raw_cwd).expanduser().resolve()) if raw_cwd else None
-        client = FreeCodeCliClient(
-            cli_path=self.cli_path,
-            cwd=effective_cwd,
-            extra_args=extra,
-            env=self.env,
-            session_id=cli_session_id,
-            auto_permission_handler=self.auto_permission_handler,
-            auto_start=True,
-        )
+
+        client = self._start_cli_client(effective_cli_id, effective_cwd, extra)
+
+        # If CLI exited immediately with "session already in use", retry with a fresh ID
+        import time
+        time.sleep(0.3)
+        if client.process and client.process.poll() is not None:
+            stderr_text = "".join(client.stderr_lines)
+            if "already in use" in stderr_text:
+                client.close()
+                effective_cli_id = str(uuid.uuid4())
+                client = self._start_cli_client(effective_cli_id, effective_cwd, extra)
+
         session = WebBridgeSession(
             session_id=session_id,
-            cli_session_id=cli_session_id,
+            cli_session_id=effective_cli_id,
             client=client,
         )
         with self._lock:
             self._sessions[session_id] = session
         return session
+
+    def _start_cli_client(
+        self,
+        cli_session_id: str,
+        cwd: Optional[str],
+        extra_args: List[str],
+    ) -> FreeCodeCliClient:
+        return FreeCodeCliClient(
+            cli_path=self.cli_path,
+            cwd=cwd,
+            extra_args=extra_args,
+            env=self.env,
+            session_id=cli_session_id,
+            auto_permission_handler=self.auto_permission_handler,
+            auto_start=True,
+        )
 
     def list_sessions(self) -> list[WebBridgeSession]:
         with self._lock:
