@@ -10,7 +10,7 @@ except ImportError:
     from api_server import create_app as create_api_app
 
 
-CHAT_HTML = """<!doctype html>
+CHAT_HTML = r"""<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
@@ -993,18 +993,18 @@ CHAT_HTML = """<!doctype html>
         codes.push(escapeHtml(code));
         return "\x00" + (codes.length - 1) + "\x00";
       });
-      text = text.replace(/\\*\\*([^*]+)\\*\\*/g, "<strong>$1</strong>");
+      text = text.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
       text = text.replace(/__([^_]+)__/g, "<strong>$1</strong>");
-      text = text.replace(/\\*([^*]+)\\*/g, "<em>$1</em>");
+      text = text.replace(/\*([^*]+)\*/g, "<em>$1</em>");
       text = text.replace(/_([^_]+)_/g, "<em>$1</em>");
-      text = text.replace(/\\[([^\\]]+)\\]\\(([^)]+)\\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
-      text = text.replace(/\x00(\\d+)\x00/g, (match, idx) => `<code>${codes[parseInt(idx)]}</code>`);
+      text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+      text = text.replace(/\x00(\d+)\x00/g, (match, idx) => `<code>${codes[parseInt(idx)]}</code>`);
       return text;
     }
 
     function renderMarkdown(text) {
       if (!text) return "";
-      const lines = text.split("\\n");
+      const lines = text.split("\n");
       let html = "";
       let inCodeBlock = false;
       let codeBlockLang = "";
@@ -1014,7 +1014,7 @@ CHAT_HTML = """<!doctype html>
 
       for (let i = 0; i < lines.length; i++) {
         let line = lines[i];
-        const codeBlockMatch = line.match(/^```(\\w*)\\s*$/);
+        const codeBlockMatch = line.match(/^```(\w*)\s*$/);
         if (codeBlockMatch) {
           if (!inCodeBlock) {
             inCodeBlock = true;
@@ -1024,7 +1024,7 @@ CHAT_HTML = """<!doctype html>
           } else {
             inCodeBlock = false;
             const langClass = codeBlockLang ? ` class="language-${escapeHtml(codeBlockLang)}"` : "";
-            html += `<pre><code${langClass}>${escapeHtml(codeBlockContent.join("\\n"))}</code></pre>\n`;
+            html += `<pre><code${langClass}>${escapeHtml(codeBlockContent.join("\n"))}</code></pre>\n`;
             codeBlockLang = "";
             continue;
           }
@@ -1034,55 +1034,55 @@ CHAT_HTML = """<!doctype html>
           continue;
         }
         if (!line.trim()) {
-          if (inList) { html += `</${listType}>\\n`; inList = false; listType = ""; }
-          html += "<br>\\n";
+          if (inList) { html += `</${listType}>\n`; inList = false; listType = ""; }
+          html += "<br>\n";
           continue;
         }
-        if (/^---+\\s*$/.test(line) || /^\\*\\*\\*+\\s*$/.test(line)) {
-          if (inList) { html += `</${listType}>\\n`; inList = false; listType = ""; }
-          html += "<hr>\\n";
+        if (/^---+\s*$/.test(line) || /^\*\*\*+\s*$/.test(line)) {
+          if (inList) { html += `</${listType}>\n`; inList = false; listType = ""; }
+          html += "<hr>\n";
           continue;
         }
         if (line.startsWith("> ")) {
-          if (inList) { html += `</${listType}>\\n`; inList = false; listType = ""; }
-          html += `<blockquote>${renderInline(line.slice(2))}</blockquote>\\n`;
+          if (inList) { html += `</${listType}>\n`; inList = false; listType = ""; }
+          html += `<blockquote>${renderInline(line.slice(2))}</blockquote>\n`;
           continue;
         }
-        const ulMatch = line.match(/^(\\s*)[-*]\\s+(.*)$/);
+        const ulMatch = line.match(/^(\s*)[-*]\s+(.*)$/);
         if (ulMatch) {
           if (!inList || listType !== "ul") {
-            if (inList) html += `</${listType}>\\n`;
-            html += "<ul>\\n";
+            if (inList) html += `</${listType}>\n`;
+            html += "<ul>\n";
             inList = true; listType = "ul";
           }
-          html += `<li>${renderInline(ulMatch[2])}</li>\\n`;
+          html += `<li>${renderInline(ulMatch[2])}</li>\n`;
           continue;
         }
-        const olMatch = line.match(/^(\\s*)\\d+\\.\\s+(.*)$/);
+        const olMatch = line.match(/^(\s*)\d+\.\s+(.*)$/);
         if (olMatch) {
           if (!inList || listType !== "ol") {
-            if (inList) html += `</${listType}>\\n`;
-            html += "<ol>\\n";
+            if (inList) html += `</${listType}>\n`;
+            html += "<ol>\n";
             inList = true; listType = "ol";
           }
-          html += `<li>${renderInline(olMatch[2])}</li>\\n`;
+          html += `<li>${renderInline(olMatch[2])}</li>\n`;
           continue;
         }
-        const hMatch = line.match(/^(#{1,6})\\s+(.*)$/);
+        const hMatch = line.match(/^(#{1,6})\s+(.*)$/);
         if (hMatch) {
-          if (inList) { html += `</${listType}>\\n`; inList = false; listType = ""; }
+          if (inList) { html += `</${listType}>\n`; inList = false; listType = ""; }
           const level = hMatch[1].length;
-          html += `<h${level}>${renderInline(hMatch[2])}</h${level}>\\n`;
+          html += `<h${level}>${renderInline(hMatch[2])}</h${level}>\n`;
           continue;
         }
-        if (inList) { html += `</${listType}>\\n`; inList = false; listType = ""; }
-        html += `<p>${renderInline(line)}</p>\\n`;
+        if (inList) { html += `</${listType}>\n`; inList = false; listType = ""; }
+        html += `<p>${renderInline(line)}</p>\n`;
       }
       if (inCodeBlock) {
         const langClass = codeBlockLang ? ` class="language-${escapeHtml(codeBlockLang)}"` : "";
-        html += `<pre><code${langClass}>${escapeHtml(codeBlockContent.join("\\n"))}</code></pre>\\n`;
+        html += `<pre><code${langClass}>${escapeHtml(codeBlockContent.join("\n"))}</code></pre>\n`;
       }
-      if (inList) { html += `</${listType}>\\n`; }
+      if (inList) { html += `</${listType}>\n`; }
       return html;
     }
 
@@ -1117,7 +1117,7 @@ CHAT_HTML = """<!doctype html>
       if (!text) return "";
       let cleaned = text;
       cleaned = cleaned.replace(/<｜DSML｜function_calls/g, "...");
-      cleaned = cleaned.replace(/<｜DSML｜\\/function_calls>/g, "");
+      cleaned = cleaned.replace(/<｜DSML｜\/function_calls>/g, "");
       cleaned = cleaned.replace(/<｜begin▁of▁sentence｜>/g, "");
       cleaned = cleaned.replace(/<｜end▁of▁sentence｜>/g, "");
       cleaned = cleaned.replace(/<｜EOT｜>/g, "");
@@ -1332,7 +1332,7 @@ CHAT_HTML = """<!doctype html>
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
-        const chunks = buffer.split("\\n\\n");
+        const chunks = buffer.split("\n\n");
         buffer = chunks.pop() || "";
 
         for (const chunk of chunks) {
