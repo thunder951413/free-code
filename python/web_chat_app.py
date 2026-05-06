@@ -1004,7 +1004,7 @@ CHAT_HTML = """<!doctype html>
 
     function renderMarkdown(text) {
       if (!text) return "";
-      const lines = text.split("\n");
+      const lines = text.split("\\n");
       let html = "";
       let inCodeBlock = false;
       let codeBlockLang = "";
@@ -1024,7 +1024,7 @@ CHAT_HTML = """<!doctype html>
           } else {
             inCodeBlock = false;
             const langClass = codeBlockLang ? ` class="language-${escapeHtml(codeBlockLang)}"` : "";
-            html += `<pre><code${langClass}>${escapeHtml(codeBlockContent.join("\n"))}</code></pre>\n`;
+            html += `<pre><code${langClass}>${escapeHtml(codeBlockContent.join("\\n"))}</code></pre>\n`;
             codeBlockLang = "";
             continue;
           }
@@ -1034,55 +1034,55 @@ CHAT_HTML = """<!doctype html>
           continue;
         }
         if (!line.trim()) {
-          if (inList) { html += `</${listType}>\n`; inList = false; listType = ""; }
-          html += "<br>\n";
+          if (inList) { html += `</${listType}>\\n`; inList = false; listType = ""; }
+          html += "<br>\\n";
           continue;
         }
         if (/^---+\\s*$/.test(line) || /^\\*\\*\\*+\\s*$/.test(line)) {
-          if (inList) { html += `</${listType}>\n`; inList = false; listType = ""; }
-          html += "<hr>\n";
+          if (inList) { html += `</${listType}>\\n`; inList = false; listType = ""; }
+          html += "<hr>\\n";
           continue;
         }
         if (line.startsWith("> ")) {
-          if (inList) { html += `</${listType}>\n`; inList = false; listType = ""; }
-          html += `<blockquote>${renderInline(line.slice(2))}</blockquote>\n`;
+          if (inList) { html += `</${listType}>\\n`; inList = false; listType = ""; }
+          html += `<blockquote>${renderInline(line.slice(2))}</blockquote>\\n`;
           continue;
         }
         const ulMatch = line.match(/^(\\s*)[-*]\\s+(.*)$/);
         if (ulMatch) {
           if (!inList || listType !== "ul") {
-            if (inList) html += `</${listType}>\n`;
-            html += "<ul>\n";
+            if (inList) html += `</${listType}>\\n`;
+            html += "<ul>\\n";
             inList = true; listType = "ul";
           }
-          html += `<li>${renderInline(ulMatch[2])}</li>\n`;
+          html += `<li>${renderInline(ulMatch[2])}</li>\\n`;
           continue;
         }
         const olMatch = line.match(/^(\\s*)\\d+\\.\\s+(.*)$/);
         if (olMatch) {
           if (!inList || listType !== "ol") {
-            if (inList) html += `</${listType}>\n`;
-            html += "<ol>\n";
+            if (inList) html += `</${listType}>\\n`;
+            html += "<ol>\\n";
             inList = true; listType = "ol";
           }
-          html += `<li>${renderInline(olMatch[2])}</li>\n`;
+          html += `<li>${renderInline(olMatch[2])}</li>\\n`;
           continue;
         }
         const hMatch = line.match(/^(#{1,6})\\s+(.*)$/);
         if (hMatch) {
-          if (inList) { html += `</${listType}>\n`; inList = false; listType = ""; }
+          if (inList) { html += `</${listType}>\\n`; inList = false; listType = ""; }
           const level = hMatch[1].length;
-          html += `<h${level}>${renderInline(hMatch[2])}</h${level}>\n`;
+          html += `<h${level}>${renderInline(hMatch[2])}</h${level}>\\n`;
           continue;
         }
-        if (inList) { html += `</${listType}>\n`; inList = false; listType = ""; }
-        html += `<p>${renderInline(line)}</p>\n`;
+        if (inList) { html += `</${listType}>\\n`; inList = false; listType = ""; }
+        html += `<p>${renderInline(line)}</p>\\n`;
       }
       if (inCodeBlock) {
         const langClass = codeBlockLang ? ` class="language-${escapeHtml(codeBlockLang)}"` : "";
-        html += `<pre><code${langClass}>${escapeHtml(codeBlockContent.join("\n"))}</code></pre>\n`;
+        html += `<pre><code${langClass}>${escapeHtml(codeBlockContent.join("\\n"))}</code></pre>\\n`;
       }
-      if (inList) { html += `</${listType}>\n`; }
+      if (inList) { html += `</${listType}>\\n`; }
       return html;
     }
 
@@ -1427,23 +1427,34 @@ CHAT_HTML = """<!doctype html>
       setStatus("已创建新会话");
     });
 
+    async function applyCwdChange(newCwd) {
+      const session = getCurrentSession();
+      if (session) {
+        session.cwd = newCwd;
+        saveSessions();
+      }
+      localStorage.setItem(CWD_KEY, newCwd);
+      updateCwdDisplay(newCwd);
+      if (session) {
+        try {
+          await fetch("/sessions/" + encodeURIComponent(session.id), { method: "DELETE" });
+        } catch (e) {}
+        await ensureSession(session.id);
+      }
+      if (newCwd) {
+        setStatus("工作路径已设置为：" + newCwd);
+      } else {
+        setStatus("已清除工作路径");
+      }
+    }
+
     cwdBtn.addEventListener("click", () => {
       const session = getCurrentSession();
       const current = session?.cwd || localStorage.getItem(CWD_KEY) || "";
       const path = prompt("设置工作路径（CLI 启动目录）：", current);
       if (path === null) return;
       const trimmed = path.trim();
-      if (session) {
-        session.cwd = trimmed;
-        saveSessions();
-      }
-      localStorage.setItem(CWD_KEY, trimmed);
-      updateCwdDisplay(trimmed);
-      if (trimmed) {
-        setStatus("工作路径已设置为：" + trimmed + "（新会话生效）");
-      } else {
-        setStatus("已清除工作路径（新会话生效）");
-      }
+      applyCwdChange(trimmed);
     });
 
     clearBtn.addEventListener("click", () => {
