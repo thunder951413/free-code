@@ -993,12 +993,12 @@ CHAT_HTML = """<!doctype html>
         codes.push(escapeHtml(code));
         return "\x00" + (codes.length - 1) + "\x00";
       });
-      text = text.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+      text = text.replace(/\\*\\*([^*]+)\\*\\*/g, "<strong>$1</strong>");
       text = text.replace(/__([^_]+)__/g, "<strong>$1</strong>");
-      text = text.replace(/\*([^*]+)\*/g, "<em>$1</em>");
+      text = text.replace(/\\*([^*]+)\\*/g, "<em>$1</em>");
       text = text.replace(/_([^_]+)_/g, "<em>$1</em>");
-      text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
-      text = text.replace(/\x00(\d+)\x00/g, (match, idx) => `<code>${codes[parseInt(idx)]}</code>`);
+      text = text.replace(/\\[([^\\]]+)\\]\\(([^)]+)\\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+      text = text.replace(/\x00(\\d+)\x00/g, (match, idx) => `<code>${codes[parseInt(idx)]}</code>`);
       return text;
     }
 
@@ -1014,7 +1014,7 @@ CHAT_HTML = """<!doctype html>
 
       for (let i = 0; i < lines.length; i++) {
         let line = lines[i];
-        const codeBlockMatch = line.match(/^```(\w*)\s*$/);
+        const codeBlockMatch = line.match(/^```(\\w*)\\s*$/);
         if (codeBlockMatch) {
           if (!inCodeBlock) {
             inCodeBlock = true;
@@ -1038,7 +1038,7 @@ CHAT_HTML = """<!doctype html>
           html += "<br>\n";
           continue;
         }
-        if (/^---+\s*$/.test(line) || /^\*\*\*+\s*$/.test(line)) {
+        if (/^---+\\s*$/.test(line) || /^\\*\\*\\*+\\s*$/.test(line)) {
           if (inList) { html += `</${listType}>\n`; inList = false; listType = ""; }
           html += "<hr>\n";
           continue;
@@ -1048,7 +1048,7 @@ CHAT_HTML = """<!doctype html>
           html += `<blockquote>${renderInline(line.slice(2))}</blockquote>\n`;
           continue;
         }
-        const ulMatch = line.match(/^(\s*)[-*]\s+(.*)$/);
+        const ulMatch = line.match(/^(\\s*)[-*]\\s+(.*)$/);
         if (ulMatch) {
           if (!inList || listType !== "ul") {
             if (inList) html += `</${listType}>\n`;
@@ -1058,7 +1058,7 @@ CHAT_HTML = """<!doctype html>
           html += `<li>${renderInline(ulMatch[2])}</li>\n`;
           continue;
         }
-        const olMatch = line.match(/^(\s*)\d+\.\s+(.*)$/);
+        const olMatch = line.match(/^(\\s*)\\d+\\.\\s+(.*)$/);
         if (olMatch) {
           if (!inList || listType !== "ol") {
             if (inList) html += `</${listType}>\n`;
@@ -1068,7 +1068,7 @@ CHAT_HTML = """<!doctype html>
           html += `<li>${renderInline(olMatch[2])}</li>\n`;
           continue;
         }
-        const hMatch = line.match(/^(#{1,6})\s+(.*)$/);
+        const hMatch = line.match(/^(#{1,6})\\s+(.*)$/);
         if (hMatch) {
           if (inList) { html += `</${listType}>\n`; inList = false; listType = ""; }
           const level = hMatch[1].length;
