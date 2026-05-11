@@ -5,3 +5,4 @@ cli-dev
 log.txt
 .claude/
 */__pycache__/*
+.envrc
