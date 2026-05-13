@@ -7,6 +7,7 @@ import { FileWriteTool } from '../FileWriteTool/FileWriteTool.js'
 import { GlobTool } from '../GlobTool/GlobTool.js'
 import { GrepTool } from '../GrepTool/GrepTool.js'
 import { NotebookEditTool } from '../NotebookEditTool/NotebookEditTool.js'
+import { isSingleAgentModeEnabled } from '../../utils/singleAgentMode.js'
 
 let _primitiveTools: readonly Tool[] | undefined
 
@@ -26,14 +27,21 @@ let _primitiveTools: readonly Tool[] | undefined
  * excludes Glob/Grep when hasEmbeddedSearchTools() is true.
  */
 export function getReplPrimitiveTools(): readonly Tool[] {
-  return (_primitiveTools ??= [
-    FileReadTool,
-    FileWriteTool,
-    FileEditTool,
-    GlobTool,
-    GrepTool,
-    BashTool,
-    NotebookEditTool,
-    AgentTool,
-  ])
+  const primitiveTools =
+    _primitiveTools ??= [
+      FileReadTool,
+      FileWriteTool,
+      FileEditTool,
+      GlobTool,
+      GrepTool,
+      BashTool,
+      NotebookEditTool,
+      AgentTool,
+    ]
+
+  if (isSingleAgentModeEnabled()) {
+    return primitiveTools.filter(tool => tool.name !== AgentTool.name)
+  }
+
+  return primitiveTools
 }

@@ -139,12 +139,16 @@ import { hasEmbeddedSearchTools } from './utils/embeddedTools.js'
 import { isEnvTruthy } from './utils/envUtils.js'
 import { isPowerShellToolEnabled } from './utils/shell/shellToolUtils.js'
 import { isAgentSwarmsEnabled } from './utils/agentSwarmsEnabled.js'
+import { isSingleAgentModeEnabled } from './utils/singleAgentMode.js'
 import { isWorktreeModeEnabled } from './utils/worktreeModeEnabled.js'
 import {
   REPL_TOOL_NAME,
   REPL_ONLY_TOOLS,
   isReplModeEnabled,
 } from './tools/REPLTool/constants.js'
+import { SEND_MESSAGE_TOOL_NAME } from './tools/SendMessageTool/constants.js'
+import { TEAM_CREATE_TOOL_NAME } from './tools/TeamCreateTool/constants.js'
+import { TEAM_DELETE_TOOL_NAME } from './tools/TeamDeleteTool/constants.js'
 export { REPL_ONLY_TOOLS }
 /* eslint-disable @typescript-eslint/no-require-imports */
 const getPowerShellTool = () => {
@@ -268,6 +272,23 @@ export function filterToolsByDenyRules<
   return tools.filter(tool => !getDenyRuleForTool(permissionContext, tool))
 }
 
+function filterToolsForSingleAgentMode<T extends { name: string }>(
+  tools: readonly T[],
+): T[] {
+  if (!isSingleAgentModeEnabled()) {
+    return [...tools]
+  }
+
+  const disabledToolNames = new Set([
+    AgentTool.name,
+    SEND_MESSAGE_TOOL_NAME,
+    TEAM_CREATE_TOOL_NAME,
+    TEAM_DELETE_TOOL_NAME,
+  ])
+
+  return tools.filter(tool => !disabledToolNames.has(tool.name))
+}
+
 export const getTools = (permissionContext: ToolPermissionContext): Tools => {
   // Simple mode: only Bash, Read, and Edit tools
   if (isEnvTruthy(process.env.CLAUDE_CODE_SIMPLE)) {
@@ -294,7 +315,9 @@ export const getTools = (permissionContext: ToolPermissionContext): Tools => {
     ) {
       simpleTools.push(AgentTool, TaskStopTool, getSendMessageTool())
     }
-    return filterToolsByDenyRules(simpleTools, permissionContext)
+    return filterToolsForSingleAgentMode(
+      filterToolsByDenyRules(simpleTools, permissionContext),
+    )
   }
 
   // Get all base tools and filter out special tools that get added conditionally
@@ -308,6 +331,7 @@ export const getTools = (permissionContext: ToolPermissionContext): Tools => {
 
   // Filter out tools that are denied by the deny rules
   let allowedTools = filterToolsByDenyRules(tools, permissionContext)
+  allowedTools = filterToolsForSingleAgentMode(allowedTools)
 
   // When REPL mode is enabled, hide primitive tools from direct use.
   // They're still accessible inside REPL via the VM context.

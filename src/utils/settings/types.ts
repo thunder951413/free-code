@@ -761,6 +761,12 @@ export const SettingsSchema = lazySchema(() =>
           'Name of an agent (built-in or custom) to use for the main thread. ' +
             "Applies the agent's system prompt, tool restrictions, and model.",
         ),
+      singleAgentMode: z
+        .boolean()
+        .optional()
+        .describe(
+          'Keep the session in a single main-agent conversation. Hides agent delegation tools and adds guidance to solve tasks directly with normal tools.',
+        ),
       companyAnnouncements: z
         .array(z.string())
         .optional()

@@ -60,6 +60,7 @@ import { logForDebugging } from '../utils/debug.js'
 import { loadMemoryPrompt } from '../memdir/memdir.js'
 import { isUndercover } from '../utils/undercover.js'
 import { isMcpInstructionsDeltaEnabled } from '../utils/mcpInstructionsDelta.js'
+import { isSingleAgentModeEnabled } from '../utils/singleAgentMode.js'
 
 // Dead code elimination: conditional imports for feature-gated modules
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -250,6 +251,20 @@ function getSimpleDoingTasksSection(): string {
   ]
 
   return [`# Doing tasks`, ...prependBullets(items)].join(`\n`)
+}
+
+function getSingleAgentModeSection(): string | null {
+  if (!isSingleAgentModeEnabled()) {
+    return null
+  }
+
+  const items = [
+    `Single-agent mode is active for this session.`,
+    `Solve the task directly in this conversation using the available tools. Do not delegate work to other agents or rely on agent-to-agent coordination.`,
+    `Avoid unnecessary decomposition. Prefer reading files, searching code, editing files, and running commands yourself unless the user explicitly asks for a separate planning flow.`,
+  ]
+
+  return [`# Single-agent mode`, ...prependBullets(items)].join(`\n`)
 }
 
 function getActionsSection(): string {
@@ -492,6 +507,7 @@ ${CYBER_RISK_INSTRUCTION}`,
     systemPromptSection('session_guidance', () =>
       getSessionSpecificGuidanceSection(enabledTools, skillToolCommands),
     ),
+    systemPromptSection('single_agent_mode', () => getSingleAgentModeSection()),
     systemPromptSection('memory', () => loadMemoryPrompt()),
     systemPromptSection('ant_model_override', () =>
       getAntModelOverrideSection(),
