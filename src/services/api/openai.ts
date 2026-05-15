@@ -410,9 +410,10 @@ function convertMessages(
         continue
       }
 
-      // Separate tool_use blocks from text content
+      // Separate tool_use blocks from text/thinking content
       const toolCalls: OpenAI.ChatCompletionMessageToolCall[] = []
       let textContent = ''
+      let reasoningContent = ''
 
       for (const block of content) {
         if (block.type === 'tool_use') {
@@ -429,8 +430,16 @@ function convertMessages(
           })
         } else if (block.type === 'text') {
           textContent += block.text
-        } else if (block.type === 'thinking' || block.type === 'redacted_thinking') {
-          // Skip thinking blocks - OpenAI doesn't support them in messages
+        } else if (block.type === 'thinking') {
+          const thinkingText = (block as any).thinking || ''
+          if (thinkingText) {
+            reasoningContent += thinkingText
+          }
+        } else if (block.type === 'redacted_thinking') {
+          const redactedData = (block as any).data || ''
+          if (redactedData) {
+            reasoningContent += redactedData
+          }
         }
       }
 
@@ -438,6 +447,9 @@ function convertMessages(
         role: 'assistant',
         ...(textContent && { content: textContent }),
         ...(toolCalls.length > 0 && { tool_calls: toolCalls }),
+      }
+      if (reasoningContent) {
+        (assistantMsg as any).reasoning_content = reasoningContent
       }
       result.push(assistantMsg)
     }
@@ -453,8 +465,10 @@ function convertMessages(
 type OpenAIStreamState = {
   nextContentBlockIndex: number
   currentTextBlockIndex: number | null
+  currentThinkingBlockIndex: number | null
   messageStarted: boolean
   hasOpenTextBlock: boolean
+  hasOpenThinkingBlock: boolean
   toolCallIndexMap: Map<number, number>
 }
 
@@ -462,8 +476,10 @@ function createOpenAIStreamState(): OpenAIStreamState {
   return {
     nextContentBlockIndex: 0,
     currentTextBlockIndex: null,
+    currentThinkingBlockIndex: null,
     messageStarted: false,
     hasOpenTextBlock: false,
+    hasOpenThinkingBlock: false,
     toolCallIndexMap: new Map<number, number>(),
   }
 }
@@ -513,6 +529,16 @@ function convertChunkToEvents(
 
   // --- text content ---
   if (delta?.content != null && delta.content !== '') {
+    // Close any open thinking block before starting text
+    if (state.hasOpenThinkingBlock && state.currentThinkingBlockIndex !== null) {
+      events.push({
+        type: 'content_block_stop',
+        index: state.currentThinkingBlockIndex,
+      })
+      state.currentThinkingBlockIndex = null
+      state.hasOpenThinkingBlock = false
+    }
+
     if (state.currentTextBlockIndex === null) {
       state.currentTextBlockIndex = state.nextContentBlockIndex++
       events.push({
@@ -527,6 +553,36 @@ function convertChunkToEvents(
       type: 'content_block_delta',
       index: state.currentTextBlockIndex,
       delta: { type: 'text_delta', text: delta.content },
+    })
+  }
+
+  // --- reasoning content (thinking mode for DeepSeek/OpenAI reasoning models) ---
+  const reasoningContent = (delta as any)?.reasoning_content
+  if (reasoningContent != null && reasoningContent !== '') {
+    // Close any open text block before starting thinking
+    if (state.hasOpenTextBlock && state.currentTextBlockIndex !== null) {
+      events.push({
+        type: 'content_block_stop',
+        index: state.currentTextBlockIndex,
+      })
+      state.currentTextBlockIndex = null
+      state.hasOpenTextBlock = false
+    }
+
+    if (state.currentThinkingBlockIndex === null) {
+      state.currentThinkingBlockIndex = state.nextContentBlockIndex++
+      events.push({
+        type: 'content_block_start',
+        index: state.currentThinkingBlockIndex,
+        content_block: { type: 'thinking', thinking: '', signature: '' } as any,
+      })
+      state.hasOpenThinkingBlock = true
+    }
+
+    events.push({
+      type: 'content_block_delta',
+      index: state.currentThinkingBlockIndex,
+      delta: { type: 'thinking_delta', thinking: reasoningContent },
     })
   }
 
@@ -565,6 +621,16 @@ function convertChunkToEvents(
           })
           state.currentTextBlockIndex = null
           state.hasOpenTextBlock = false
+        }
+
+        // Close any open thinking block
+        if (state.hasOpenThinkingBlock && state.currentThinkingBlockIndex !== null) {
+          events.push({
+            type: 'content_block_stop',
+            index: state.currentThinkingBlockIndex,
+          })
+          state.currentThinkingBlockIndex = null
+          state.hasOpenThinkingBlock = false
         }
 
         const blockIdx = state.nextContentBlockIndex++
@@ -629,7 +695,8 @@ function choiceHasPayload(choice: ChatCompletionChunk['choices'][number] | undef
 
   return Boolean(
     (choice.delta?.content != null && choice.delta.content !== '') ||
-      (choice.delta?.tool_calls && choice.delta.tool_calls.length > 0),
+      (choice.delta?.tool_calls && choice.delta.tool_calls.length > 0) ||
+      ((choice.delta as any)?.reasoning_content != null && (choice.delta as any)?.reasoning_content !== ''),
   )
 }
 
@@ -648,6 +715,16 @@ function createFinishEvents(
     })
     state.currentTextBlockIndex = null
     state.hasOpenTextBlock = false
+  }
+
+  // Close any open thinking block.
+  if (state.hasOpenThinkingBlock && state.currentThinkingBlockIndex !== null) {
+    events.push({
+      type: 'content_block_stop',
+      index: state.currentThinkingBlockIndex,
+    })
+    state.currentThinkingBlockIndex = null
+    state.hasOpenThinkingBlock = false
   }
 
   for (const blockIdx of [...state.toolCallIndexMap.values()].sort((a, b) => a - b)) {
@@ -814,12 +891,20 @@ export async function createWithOpenAI(
 
   const choice = response.choices[0]
   if (!choice) throw new Error('No response from OpenAI')
+
+  // Reasoning content (thinking mode for DeepSeek/OpenAI reasoning models)
+  const reasoningContent = (choice.message as any)?.reasoning_content
+
   emitVisibleOpenAILog(
-    `[OpenAI] non-streaming response: model=${model} finish_reason=${choice.finish_reason ?? 'none'} tool_calls=${choice.message.tool_calls?.length ?? 0} text=${choice.message.content ? 'yes' : 'no'}`,
+    `[OpenAI] non-streaming response: model=${model} finish_reason=${choice.finish_reason ?? 'none'} tool_calls=${choice.message.tool_calls?.length ?? 0} text=${choice.message.content ? 'yes' : 'no'} reasoning=${reasoningContent ? 'yes' : 'no'}`,
   )
 
   // Convert OpenAI response to Anthropic BetaMessage
   const content: BetaContentBlock[] = []
+
+  if (reasoningContent) {
+    content.push({ type: 'thinking', thinking: reasoningContent, signature: '' } as any)
+  }
 
   // Text content
   if (choice.message.content) {
